@@ -1,0 +1,72 @@
+"use client";
+
+import React from "react";
+import { Bell } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { ApiNotificationTypes } from "@/utils/constants";
+import { updateUserNotificationCount } from "@/lib/features/users/userSlice";
+import ApiStatusUpdate from "@/utils/client/api/api-status-update";
+import NotificationCard from "./NotificationCard";
+
+const NotificationIcon = () => {
+  const { notifications, user } = useAppSelector((state) => state.userStore);
+  const dispatch = useAppDispatch();
+
+
+  // ? API refresh unseen notification count
+  const handleRefreshCount = async () => {
+    if (user?.countOfNotifications !== 0) {
+      const responseData = await ApiStatusUpdate(ApiNotificationTypes.REFRESH_NOTIFICATION);
+      if (responseData.success) {
+        dispatch(updateUserNotificationCount(0));
+      }
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button onClick={handleRefreshCount} className="relative p-2 rounded-full hover:bg-blue-100/40 transition cursor-pointer">
+            <Bell className="w-6 h-6 text-gray-700" />
+            {user?.countOfNotifications !== 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full shadow">
+                {user?.countOfNotifications}
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+
+        <PopoverContent
+          align="end"
+          sideOffset={8}
+          className="w-[22rem] rounded-xl border shadow-lg bg-white p-0 z-50 overflow-x-hidden"
+        >
+          <div className="p-4 border-b">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Notifications
+            </h3>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+            {notifications?.map((notification) => (
+              <NotificationCard key={notification._id} notification={notification} />
+            ))}
+            {notifications?.length === 0 && <div className="h-96 flex items-center justify-center divide-gray-100">You have no notifications.</div>}
+          </div>
+
+          <div className="p-4 border-t text-center">
+            <div className="h-[1.5rem]"></div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
+export default NotificationIcon;
