@@ -16,7 +16,7 @@ const ViewDetails = ({ meeting }: PropTypes) => {
     };
     return (
         <Dialog>
-            <DialogTrigger>
+            <DialogTrigger asChild>
                 <div className="flex justify-center pt-3 mt-auto">
                     <button id='view-details' className="text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-lg py-2 px-6 sm:px-8 md:px-10 lg:px-12 w-full sm:w-auto transition-all duration-300 cursor-pointer">
                         View Details
@@ -99,7 +99,7 @@ const ViewDetails = ({ meeting }: PropTypes) => {
                             Next
                         </button>
 
-                        <DialogTrigger>
+                        <DialogTrigger asChild>
                             <button id='view-detail-close' className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">
                                 Close
                             </button>

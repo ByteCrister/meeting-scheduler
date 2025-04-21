@@ -1,5 +1,6 @@
 import { registerSlot } from "@/types/client-types"
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
+import { isEqual } from "lodash";
 
 interface InitialSlotSliceTypes {
     Store: registerSlot[];
@@ -19,8 +20,11 @@ const slotSlice = createSlice({
     reducers: {
         // * initialize slot data
         addSlots: (state, action: PayloadAction<registerSlot[]>) => {
-            state.Store = [...state.Store, ...action.payload];
-            state.tempStore = [...state.tempStore, ...action.payload];
+            const isSame = isEqual(state.Store, action.payload);
+            if (!isSame) {
+                state.Store = [...state.Store, ...action.payload];
+                state.tempStore = [...state.tempStore, ...action.payload];
+            }
         },
         updateSlot: (state, action: PayloadAction<registerSlot>) => {
             state.Store = state.Store?.map((item) => item._id === action.payload._id ? action.payload : item);

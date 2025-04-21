@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { dummyOfBookedSlotsData } from '@/utils/client/data';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
@@ -36,6 +36,20 @@ export default function BookedMeetings() {
     };
     fetchData();
   }, [dispatch]);
+
+
+  const paginatedMeetings = useMemo(() => {
+    const sorted = [...bookedMeetings].sort((a, b) => {
+      const dateA = new Date(a.meetingDate ?? '').getTime();
+      const dateB = new Date(b.meetingDate ?? '').getTime();
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+
+    return sorted.slice(
+      maxItem * (currentPage - 1),
+      (maxItem * (currentPage - 1)) + maxItem
+    );
+  }, [bookedMeetings, sortOrder, currentPage]);
 
 
   if (isFetching) return <BookedMeetingsSkeleton />;
@@ -92,14 +106,7 @@ export default function BookedMeetings() {
 
       {/* Meetings List */}
       <div className="space-y-4">
-        {[...bookedMeetings].sort((a, b) => {
-          const dateA = new Date(a.meetingDate ?? '').getTime();
-          const dateB = new Date(b.meetingDate ?? '').getTime();
-          return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-        }).slice(
-          maxItem * (currentPage - 1),
-          (maxItem * (currentPage - 1)) + maxItem
-        ).map((meeting, index) => (
+        {paginatedMeetings.map((meeting, index) => (
           <MeetingCard key={meeting._id + meeting.category + index} meeting={meeting} />
         ))}
       </div>

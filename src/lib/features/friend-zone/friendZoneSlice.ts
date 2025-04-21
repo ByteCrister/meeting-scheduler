@@ -1,6 +1,7 @@
 import { FriendTypes } from "@/components/followers/Followers";
 import { initialFriendZoneTypes } from "@/types/client-types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { isEqual } from "lodash";
 
 const initialState: initialFriendZoneTypes = {
     friendListStore: null,
@@ -14,8 +15,11 @@ const friendZoneSlice = createSlice({
     reducers: {
         // * FriendList section
         setFriendList: (state, action: PayloadAction<FriendTypes[] | null>) => {
-            state.friendListStore = action.payload;
-            state.friendList = action.payload;
+            const isSame = isEqual(state.friendListStore, action.payload);
+            if(!isSame){
+                state.friendListStore = action.payload;
+                state.friendList = action.payload;
+            }
         },
         addNewFriend: (state, action: PayloadAction<FriendTypes>) => {
             state.friendList?.unshift(action.payload);

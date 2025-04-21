@@ -1,6 +1,7 @@
 
 import { BookedSlotsTypes } from "@/types/client-types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { isEqual } from "lodash";
 
 interface initialStateType {
     Store: BookedSlotsTypes[];
@@ -20,8 +21,11 @@ const meetingSlice = createSlice({
     reducers: {
         // * Manage booked meeting slots
         addBookedMeetings: (state, action: PayloadAction<BookedSlotsTypes[]>) => {
-            state.Store = [...action.payload];
-            state.bookedMeetings = [...action.payload];
+            const isSame = isEqual(state.Store, action.payload);
+            if (!isSame) {
+                state.Store = [...state.Store, ...action.payload];
+                state.bookedMeetings = [...state.bookedMeetings, ...action.payload];
+            }
         },
         addSingleBookedMeeting: (state, action: PayloadAction<BookedSlotsTypes>) => {
             state.Store.unshift(action.payload);
