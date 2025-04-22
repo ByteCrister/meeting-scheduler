@@ -1,9 +1,9 @@
-import { initialNewsFeedTypes, NewsFeedTypes } from "@/types/client-types";
+import { newsFeedSliceInitialTypes, NewsFeedTypes } from "@/types/client-types";
 import { NotificationType } from "@/utils/constants";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { isEqual } from "lodash";
 
-const initialNewsFeed: initialNewsFeedTypes = {
+const initialNewsFeed: newsFeedSliceInitialTypes = {
     newsFeeds: {}
 }
 
@@ -13,7 +13,7 @@ const newsFeedSlice = createSlice({
     reducers: {
         addNewsFeeds: (state, action: PayloadAction<{ [key: string]: NewsFeedTypes }>) => {
             if (!isEqual(state.newsFeeds, action.payload)) {
-                state.newsFeeds = action.payload;
+                state.newsFeeds = {...action.payload};
             }
         },
         updateSlotBookedUsers: (state, action: PayloadAction<{ slotId: string, userId: string, type: (NotificationType.SLOT_UNBOOKED | NotificationType.SLOT_BOOKED) }>) => {

@@ -1,23 +1,25 @@
 "use client";
 
-import { ActivityType, Notification, reduxUsersInitialState, Users } from "@/types/client-types";
+import { ActivityType, Notification, userSliceInitialState, Users } from "@/types/client-types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { isEqual } from "lodash";
 
-// * initial state
-const initialState: reduxUsersInitialState = {
+const initialState: userSliceInitialState = {
     user: null,
     notifications: [],
     activities: null
 };
 
-// Creating user slice
 export const userSlice = createSlice({
     name: "user",
     initialState,
     reducers: {
-        setUser: (state, action: PayloadAction<{user: Users, activity: ActivityType[]}>) => {
-            state.user = action.payload.user;
-            state.activities = action.payload.activity;
+        setUser: (state, action: PayloadAction<{ user: Users, activity: ActivityType[] }>) => {
+            const isSameUser = isEqual(state.user, action.payload.user);
+            const isSameActivities = isEqual(state.user, action.payload.user);
+
+            if (!isSameUser) state.user = action.payload.user;
+            if (!isSameActivities) state.activities = action.payload.activity;
         },
 
         updateUserInfo: (state, action: PayloadAction<{ field: 'username' | 'image' | 'title' | 'timeZone' | 'profession', updatedValue: string }>) => {

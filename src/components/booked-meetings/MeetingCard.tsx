@@ -2,11 +2,12 @@
 
 import { BookedSlotsTypes } from '@/types/client-types';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Eye, Trash2, Video } from 'lucide-react';
+import { Calendar, Clock, User, Eye, Trash2 } from 'lucide-react';
 import { formateSlotMeetingDate } from '../my-slots/SlotCard';
 import { useAppDispatch } from '@/lib/hooks';
 import { useCallback } from 'react';
 import { toggleDeleteBookedSlotAlert, toggleViewBookedSlot } from '@/lib/features/component-state/componentSlice';
+import JoinMeeting from './JoinMeeting';
 
 const statusColors = {
     upcoming: 'bg-blue-100 text-blue-800',
@@ -116,17 +117,7 @@ const MeetingCard = ({ meeting }: { meeting: BookedSlotsTypes }) => {
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete
                     </button>
-                    <button
-                        id='booked-meeting-join'
-                        className={`w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${isJoinEnabled
-                            ? 'text-white bg-blue-600 hover:bg-blue-700'
-                            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                            }`}
-                        disabled={!isJoinEnabled}
-                    >
-                        <Video className="w-4 h-4 mr-2" />
-                        Join
-                    </button>
+                    <JoinMeeting isJoinEnabled={isJoinEnabled} />
                 </div>
 
             </div>

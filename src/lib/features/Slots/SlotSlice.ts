@@ -2,13 +2,13 @@ import { registerSlot } from "@/types/client-types"
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 import { isEqual } from "lodash";
 
-interface InitialSlotSliceTypes {
+interface slotSliceInitialTypes {
     Store: registerSlot[];
     tempStore: registerSlot[];
     currentSlotPage: number;
 }
 
-const initialSlotSliceState: InitialSlotSliceTypes = {
+const initialSlotSliceState: slotSliceInitialTypes = {
     Store: [],
     tempStore: [],
     currentSlotPage: 1
@@ -31,7 +31,7 @@ const slotSlice = createSlice({
             state.tempStore = state.tempStore?.map((item) => item._id === action.payload._id ? action.payload : item);
         },
         sortTempSlots: (state, action: PayloadAction<registerSlot[]>) => {
-            state.tempStore = action.payload;
+            state.tempStore = [...action.payload];
         },
 
         // * Update page info

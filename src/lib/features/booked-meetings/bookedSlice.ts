@@ -3,13 +3,13 @@ import { BookedSlotsTypes } from "@/types/client-types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { isEqual } from "lodash";
 
-interface initialStateType {
+interface bookedSliceInitialType {
     Store: BookedSlotsTypes[];
     bookedMeetings: BookedSlotsTypes[];
     currentPage: number;
 }
 
-const initialState: initialStateType = {
+const initialState: bookedSliceInitialType = {
     Store: [],
     bookedMeetings: [],
     currentPage: 1

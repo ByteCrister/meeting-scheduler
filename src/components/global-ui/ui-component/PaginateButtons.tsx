@@ -43,8 +43,8 @@ const PaginateButtons = ({
                             if (!isFirstPage) handlePaginatePage(currentPage - 1);
                         }}
                         className={`transition-colors duration-200 ${isFirstPage
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-blue-100 text-blue-300 cursor-pointer"
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-blue-100 text-blue-300 cursor-pointer"
                             }`}
                     />
                 </PaginationItem>
@@ -58,8 +58,8 @@ const PaginateButtons = ({
                             <PaginationLink
                                 isActive={currentPage === page}
                                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer duration-200 ${currentPage === page
-                                        ? "bg-blue-300 text-white shadow"
-                                        : "bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-700"
+                                    ? "bg-gray-600 text-white shadow"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-300 hover:text-gray-700"
                                     }`}
                                 onClick={(e) => {
                                     e.preventDefault();
@@ -80,8 +80,8 @@ const PaginateButtons = ({
                             if (!isLastPage) handlePaginatePage(currentPage + 1);
                         }}
                         className={`transition-colors duration-200 cursor-pointer ${isLastPage
-                                ? "opacity-50 cursor-not-allowed"
-                                : "hover:bg-blue-100 text-blue-400"
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-blue-100 text-blue-400"
                             }`}
                     />
                 </PaginationItem>

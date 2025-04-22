@@ -34,13 +34,6 @@ export interface Notification {
 }
 
 // ? Register slots type starts... not using
-export enum RepeatState {
-    Once = "once",
-    Day = "day",
-    Week = "week",
-    Month = "month"
-}
-
 export enum RegisterSlotStatus {
     Upcoming = "upcoming",
     Ongoing = "ongoing",
@@ -65,7 +58,7 @@ export interface registerSlot {
     createdAt: string;
     updatedAt: string;
 }
-// ! register slots type ...ends
+// ? ---------------- end -----------------
 
 
 // ! Meeting feed types
@@ -87,12 +80,14 @@ export interface NewsFeedTypes {
 }
 
 
-// ? User type starts...
+// ? Booked Meeting slot type
 export interface bookedSlots {
     userId: string;
     slotIndex: number;
     status: "upcoming" | "ongoing" | "expired";
 }
+
+// ! User type
 export interface Users {
     _id: string;
     username: string;
@@ -113,8 +108,6 @@ export interface Users {
     createdAt: Date;
     updatedAt: Date;
 }
-// ! User type ends...
-
 
 export interface ActivityType {
     id: string;
@@ -123,14 +116,31 @@ export interface ActivityType {
     type: 'upcoming' | 'recent' | 'available';
 }
 
-export interface reduxUsersInitialState {
-    user: Users | null;
-    notifications: Notification [] | null;
-    activities: ActivityType[] | null;
+// ? User Form Types
+export type userSignUpType = {
+    username: string;
+    email: string;
+    password: string;
+    image: string,
+    profession: string,
+    timeZone: string
+}
+export type userSignInType = {
+    email: string;
+    password: string;
 }
 
-// * Types of initial-values on redux component slice 
-export interface initialComponentStateTypes {
+
+
+// ! -------------------- Slice Types -----------------------
+
+// ? New Feed Types 
+export interface newsFeedSliceInitialTypes {
+    newsFeeds: { [key: string]: NewsFeedTypes }
+}
+
+// ? Types of component slice 
+export interface componentSliceInitialTypes {
     alertLogOut: {
         isOpen: boolean
     };
@@ -179,29 +189,16 @@ export interface initialComponentStateTypes {
     }
 }
 
-// * Friend Zone types....
-export interface initialFriendZoneTypes {
+// ? Friend Zone types....
+export interface friendZoneSliceInitialTypes {
     friendListStore: FriendTypes[] | null;
     friendList: FriendTypes[] | null;
     currentPage: number;
 }
 
-// ? User Form Types
-export type userSignUpType = {
-    username: string;
-    email: string;
-    password: string;
-    image: string,
-    profession: string,
-    timeZone: string
-}
-export type userSignInType = {
-    email: string;
-    password: string;
-}
-
-
-// ? New Feed Types 
-export interface initialNewsFeedTypes {
-    newsFeeds: { [key: string]: NewsFeedTypes }
+// ? User slice
+export interface userSliceInitialState {
+    user: Users | null;
+    notifications: Notification [] | null;
+    activities: ActivityType[] | null;
 }

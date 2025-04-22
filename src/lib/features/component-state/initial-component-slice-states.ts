@@ -1,4 +1,4 @@
-import { initialComponentStateTypes, RegisterSlotStatus } from "@/types/client-types";
+import { componentSliceInitialTypes, RegisterSlotStatus } from "@/types/client-types";
 
 // * slotDialog: { slotField: <- }
 export const initialSlotField = {
@@ -19,7 +19,7 @@ export const initialSlotField = {
     updatedAt: ''
 };
 
-export const initialComponentState: initialComponentStateTypes = {
+export const initialSate: componentSliceInitialTypes = {
     alertLogOut: { isOpen: false },
     alertDialogState: { isOpen: false, title: '', description: '' },
     friendDropDialog: { isOpen: false, user: null },

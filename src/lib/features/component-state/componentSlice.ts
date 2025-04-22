@@ -1,13 +1,13 @@
 "use client";
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { initialComponentState, initialSlotField } from "./initial-component-slice-states";
+import { initialSate, initialSlotField } from "./initial-component-slice-states";
 import { BookedSlotsTypes, registerSlot } from "@/types/client-types";
 import { FriendTypes } from "@/components/followers/Followers";
 
 const componentSlice = createSlice({
   name: "component",
-  initialState: initialComponentState,
+  initialState: initialSate,
   reducers: {
 
     setFriendDropDialog: (state, action: PayloadAction<{ isOpen: boolean; user: FriendTypes | null; }>) => {

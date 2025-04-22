@@ -22,3 +22,11 @@ export enum NotificationType {
     SLOT_UPDATED = "SLOT_UPDATED",
     SLOT_DELETED = "SLOT_DELETED"
 }
+
+// ? Search profile api type
+export enum ApiSPType {
+    GET_USER = "GET_USER",
+    GET_USER_MEETINGS = "GET_USER_MEETINGS",
+    GET_USER_FOLLOWERS = "GET_USER_FOLLOWERS",
+    GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS",
+}

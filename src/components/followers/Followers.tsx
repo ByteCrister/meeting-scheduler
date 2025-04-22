@@ -72,10 +72,8 @@ export default function Followers() {
         setIsFetching(true);
         const response = await getFollowers();
         if (response.success) {
-          dispatch(setFriendList(response.data));
-          dispatch(setCurrentPage(1));
-        } else {
-          dispatch(setFriendList(sampleFollowers)); // * <- have to remove
+          if (response.data.length !== 0) dispatch(setFriendList(response.data));
+          else dispatch(setFriendList(sampleFollowers)); // * <- have to remove
           dispatch(setCurrentPage(1));
         }
         setIsFetching(false);
