@@ -131,9 +131,6 @@ export interface reduxUsersInitialState {
 
 // * Types of initial-values on redux component slice 
 export interface initialComponentStateTypes {
-    activeSection: string | null;
-    searchOverly: boolean;
-    isFetching: boolean | null;
     alertLogOut: {
         isOpen: boolean
     };

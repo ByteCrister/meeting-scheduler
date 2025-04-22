@@ -20,9 +20,6 @@ export const initialSlotField = {
 };
 
 export const initialComponentState: initialComponentStateTypes = {
-    activeSection: null,
-    searchOverly: false,
-    isFetching: null,
     alertLogOut: { isOpen: false },
     alertDialogState: { isOpen: false, title: '', description: '' },
     friendDropDialog: { isOpen: false, user: null },
@@ -30,6 +27,6 @@ export const initialComponentState: initialComponentStateTypes = {
     slotDropDialog: { isOpen: false, slotTitle: null, slotId: null },
     notifyChangeDialog: { isOpen: false, notificationId: null, senderId: null, mode: 'notification', isDisable: false },
     profileUpdateDialog: { isOpen: false, updateField: null, username: null, title: null, category: null, timeZone: null, image: null },
-    deleteBookedSlotAlert: { isOpen: false, slotId: null, slotIndex: null },
+    deleteBookedSlotAlert: { isOpen: false, slotId: null },
     viewBookedSlotDialog: { isOpen: false, Slot: null }
 };

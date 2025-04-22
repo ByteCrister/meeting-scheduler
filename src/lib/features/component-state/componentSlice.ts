@@ -9,9 +9,7 @@ const componentSlice = createSlice({
   name: "component",
   initialState: initialComponentState,
   reducers: {
-    setActiveSection: (state, action: PayloadAction<string | null>) => {
-      state.activeSection = action.payload;
-    },
+
     setFriendDropDialog: (state, action: PayloadAction<{ isOpen: boolean; user: FriendTypes | null; }>) => {
       state.friendDropDialog = action.payload;
     },
@@ -41,12 +39,7 @@ const componentSlice = createSlice({
     },
     // ? ---------------- end --------------------
 
-    toggleIsFetching: (state, action) => {
-      state.isFetching = action.payload;
-    },
-    toggleSearchOverly: (state, action: PayloadAction<boolean>) => {
-      state.searchOverly = action.payload;
-    },
+    // ? For any kind of alert toggle this
     toggleAlertDialog: (state, action: PayloadAction<{ isOpen: boolean, title: string, description: string }>) => {
       state.alertDialogState = action.payload;
     },
@@ -66,12 +59,9 @@ const componentSlice = createSlice({
 });
 
 export const {
-  setActiveSection,
   setFriendDropDialog,
   setSlotFiledValues,
   toggleAlertLogOut,
-  toggleIsFetching,
-  toggleSearchOverly,
   toggleAlertDialog,
   toggleSlotDialog,
   toggleSlotDropDialog,

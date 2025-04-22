@@ -43,5 +43,10 @@ const meetingSlice = createSlice({
     }
 });
 
-export const { addBookedMeetings, addSingleBookedMeeting, setSortedBookedMeetings, setBookedMeetingCurrentPage } = meetingSlice.actions;
+export const {
+    addBookedMeetings,
+    addSingleBookedMeeting,
+    setSortedBookedMeetings,
+    setBookedMeetingCurrentPage
+} = meetingSlice.actions;
 export default meetingSlice;
