@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ProfileHeader } from './ProfileHeader';
-import { BookedMeetings } from './MeetingSlots';
-import { FollowersList } from './FollowersList';
+import { MeetingSlots } from '../meetings/MeetingSlots';
 import { motion } from "framer-motion";
 import { Calendar, Users, UserCheck } from "lucide-react";
-import { NumberTicker } from '../magicui/number-ticker';
+import { NumberTicker } from '../../magicui/number-ticker';
 import { getSearchedUser } from '@/utils/client/api/api-searched-profile';
 import { ApiSPType } from '@/utils/constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SearchedProfileSkeleton from './SearchedProfileSkeleton';
 import { useAppSelector } from '@/lib/hooks';
+import { ProfileHeader } from '../profile-header/ProfileHeader';
+import { FriendList } from '../friend-list/FriendList';
 
 export interface SearchedUserProfile {
   _id: string;
@@ -63,9 +63,7 @@ export const SearchedProfile: React.FC = () => {
       const response = await getSearchedUser(userId || '', ApiSPType.GET_USER);
       const { data, success } = response.data as { data: SearchedUserProfile, success: boolean };
       if (success) {
-        // if (currentUserId === data._id)
-        //   router.push('/');
-
+        // if (currentUserId === data._id) router.push('/');
         setProfile(data);
         setCount({ followers: data.followers, following: data.following, meetings: data.meetingSlots });
       }
@@ -119,17 +117,17 @@ export const SearchedProfile: React.FC = () => {
         <div className="mt-4">
           {activeTab === 'meetings' && (
             <div className="p-4">
-              <BookedMeetings userId={profile._id} />
+              <MeetingSlots userId={profile._id} />
             </div>
           )}
           {activeTab === 'followers' && (
             <div className="p-4">
-              <FollowersList userId={profile._id} type={`follower`} />
+              <FriendList userId={profile._id} type={`follower`} />
             </div>
           )}
           {activeTab === 'following' && (
             <div className="p-4">
-              <FollowersList userId={profile._id} type={`follower`} />
+              <FriendList userId={profile._id} type={`follower`} />
             </div>
           )}
         </div>

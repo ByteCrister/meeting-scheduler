@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toggleDeleteBookedSlotAlert } from "@/lib/features/component-state/componentSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import apiService from "@/utils/client/api/api-services";
 import { useState } from "react";
 import ShowToaster from "@/components/global-ui/toastify-toaster/show-toaster";
 import LoadingSpinner from "../global-ui/ui-component/LoadingSpinner";
+import { APIDeleteMeeting } from "@/utils/client/api/api-book-meetings";
 
 export function AlertDeleteBookedSlot() {
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,7 +29,7 @@ export function AlertDeleteBookedSlot() {
     if (!slotId) return;
 
     setLoading(true);
-    const responseData = await apiService.delete("/api/user-slot-booking", { slotId });
+    const responseData =await APIDeleteMeeting(slotId);
 
     if (responseData.success) {
 

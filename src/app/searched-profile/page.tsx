@@ -1,4 +1,4 @@
-import { SearchedProfile } from "@/components/searched-profile/SearchedProfile"
+import { SearchedProfile } from "@/components/searched-profile/profile/SearchedProfile"
 
 const page = () => {
   return (

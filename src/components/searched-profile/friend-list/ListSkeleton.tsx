@@ -1,11 +1,11 @@
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { Card } from "../ui/card";
 
 const ListSkeleton = () => {
     return (
         <div className="space-y-4">
-            {Array.from({ length: 5 }).map((_, index) => (
+            {Array.from({ length: 3 }).map((_, index) => (
                 <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}

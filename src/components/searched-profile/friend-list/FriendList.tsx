@@ -9,16 +9,18 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getSearchedUser } from "@/utils/client/api/api-searched-profile";
 import { ApiSPType } from "@/utils/constants";
-import ListSkeleton from "./ListSkeleton";
 import {
   followFriend,
   removeFriend,
   unfollowFriend,
 } from "@/utils/client/api/api-friendZone";
-import LoadingSpinner from "../global-ui/ui-component/LoadingSpinner";
-import PaginateButtons from "../global-ui/ui-component/PaginateButtons";
+import ListSkeleton from "./ListSkeleton";
+import LoadingSpinner from "@/components/global-ui/ui-component/LoadingSpinner";
+import PaginateButtons from "@/components/global-ui/ui-component/PaginateButtons";
+import Link from "next/link";
 
-interface Follower {
+
+interface FriendList {
   _id: string;
   username: string;
   image: string;
@@ -28,8 +30,9 @@ interface Follower {
   isFollower: boolean;
 }
 
-interface FollowingListProp {
+interface FollowersListProps {
   userId: string;
+  type: 'follower' | 'following'
 }
 
 // ? API's
@@ -39,7 +42,7 @@ const ApiOperations = {
   remove: async (userId: string) => await removeFriend(userId),
 };
 
-const dummyFollowers: Follower[] = [
+const dummyFollowers: FriendList[] = [
   {
     _id: "1",
     username: "johndoe",
@@ -87,14 +90,14 @@ const dummyFollowers: Follower[] = [
   },
 ];
 
-export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
+export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [followers, setFollowers] = useState<Follower[]>([]);
+  const [friendList, setFollowers] = useState<FriendList[]>([]);
   const [loadingBtns, setLoadingBtns] = useState<{ [key: string]: boolean }>(
     {}
   );
   const [confirmAction, setConfirmAction] = useState<{
-    follower: Follower;
+    friend: FriendList;
     operation: "remove" | "unfollow";
   } | null>(null);
 
@@ -104,12 +107,12 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const response = await getSearchedUser(
-        userId || "",
-        ApiSPType.GET_USER_FOLLOWERS
-      );
+
+      const apiType = type === 'follower' ? ApiSPType.GET_USER_FOLLOWERS : ApiSPType.GET_USER_FOLLOWINGS
+
+      const response = await getSearchedUser(userId || "", apiType);
       const { data, success } = response.data as {
-        data: Follower[];
+        data: FriendList[];
         success: boolean;
       };
       if (success) {
@@ -120,11 +123,11 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
     };
 
     fetchData();
-  }, [userId]);
+  }, [type, userId]);
 
   if (isLoading) return <ListSkeleton />;
 
-  if (followers.length === 0) {
+  if (friendList.length === 0) {
     return (
       <div className="w-full text-center py-6 text-muted-foreground text-sm italic">
         User has no followers yet.
@@ -133,15 +136,15 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
   }
 
   const handleLoadingBtns = (
-    followerId: string,
+    friendId: string,
     operation: "add" | "delete"
   ) => {
     if (operation === "add") {
-      setLoadingBtns((prev) => ({ ...prev, [followerId]: true }));
+      setLoadingBtns((prev) => ({ ...prev, [friendId]: true }));
     } else {
       setLoadingBtns((prev) => {
         const updated = { ...prev };
-        delete updated[followerId];
+        delete updated[friendId];
         return updated;
       });
     }
@@ -149,36 +152,36 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
 
   const handleButtonClick = async (
     api: "follow" | "unfollow" | "remove",
-    followerId: string,
+    friendId: string,
     filedValue: boolean
   ) => {
-    handleLoadingBtns(followerId, "add");
-    const response = await ApiOperations[api](followerId);
+    handleLoadingBtns(friendId, "add");
+    const response = await ApiOperations[api](friendId);
     if (response.success) {
       const toggleField =
         api === "follow" || api === "unfollow" ? "isFollowing" : "isFollower";
       setFollowers((prev) =>
         prev.map((item) =>
-          item._id === followerId
+          item._id === friendId
             ? { ...item, [toggleField]: !filedValue }
             : item
         )
       );
     }
-    handleLoadingBtns(followerId, "delete");
+    handleLoadingBtns(friendId, "delete");
   };
 
   return (
     <>
       <div className="space-y-4">
-        {followers
+        {friendList
           .slice(
             maxItem * (currentPage - 1),
             maxItem * (currentPage - 1) + maxItem
           )
-          .map((follower, index) => (
+          .map((friend, index) => (
             <motion.div
-              key={follower._id}
+              key={friend._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -188,62 +191,64 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-14 w-14 border-2 border-primary/30 shadow-inner">
                       <AvatarImage
-                        src={follower.image}
-                        alt={follower.username}
+                        src={friend.image}
+                        alt={friend.username}
                       />
                       <AvatarFallback className="bg-primary/10 text-primary">
-                        {follower.username.slice(0, 2).toUpperCase()}
+                        {friend.username.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="text-lg font-bold tracking-tight text-foreground">
-                        {follower.username}
-                      </h3>
+                      <Link href={`/searched-profile?user=${friend._id}`}>
+                        <h3 className="text-lg font-bold tracking-tight text-foreground hover:underline">
+                          {friend.username}
+                        </h3>
+                      </Link>
                       <p className="text-sm text-muted-foreground">
-                        {follower.title}
+                        {friend.title}
                       </p>
                       <p className="text-xs text-gray-400 italic">
-                        {follower.description}
+                        {friend.description}
                       </p>
                     </div>
                   </div>
 
                   <Button
-                    id={`follower-${follower._id}`}
+                    id={`friend-${friend._id}`}
                     size="sm"
                     className={cn(
                       "group px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-all duration-300",
-                      follower.isFollowing
+                      friend.isFollowing
                         ? "border-muted text-muted-foreground bg-gray-50 hover:bg-destructive/10 hover:text-destructive"
                         : "bg-primary text-white hover:bg-primary/90 shadow-sm"
                     )}
-                    // ? If user's follower is my follower then return 'remove', if I follow to the user's follower then unFollow else follow
+                    // ? If user's friend is my follower then return 'remove', if I follow to the user's follower then unFollow else follow
                     onClick={() => {
-                      const operation = follower.isFollower
+                      const operation = friend.isFollower
                         ? "remove"
-                        : follower.isFollowing
+                        : friend.isFollowing
                           ? "unfollow"
                           : "follow";
                       const filedValue =
                         operation === "remove"
-                          ? follower.isFollower
-                          : follower.isFollowing;
+                          ? friend.isFollower
+                          : friend.isFollowing;
 
                       if (operation === "unfollow" || operation === "remove") {
-                        setConfirmAction({ follower, operation });
+                        setConfirmAction({ friend: friend, operation });
                       } else {
-                        handleButtonClick(operation, follower._id, filedValue);
+                        handleButtonClick(operation, friend._id, filedValue);
                       }
                     }}
                   >
-                    {loadingBtns[follower._id] && loadingBtns[follower._id] ? (
+                    {loadingBtns[friend._id] && loadingBtns[friend._id] ? (
                       <LoadingSpinner />
-                    ) : follower.isFollowing ? (
+                    ) : friend.isFollowing ? (
                       <>
                         <UserMinus className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
                         Unfollow
                       </>
-                    ) : follower.isFollower ? (
+                    ) : friend.isFollower ? (
                       <>
                         <UserPlus className="h-4 w-4 group-hover:scale-110 transition-transform" />
                         <span className="tracking-tight">Remove</span>
@@ -265,7 +270,7 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
       <PaginateButtons
         currentPage={currentPage}
         maxItems={maxItem}
-        totalItems={followers.length}
+        totalItems={friendList.length}
         handlePaginatePage={(newPage) => setCurrentPage(newPage)}
       />
 
@@ -280,7 +285,7 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
             </h2>
             <p className="text-sm text-muted-foreground text-center">
               Are you sure you want to {confirmAction.operation}{" "}
-              <strong>{confirmAction.follower.username}</strong>?
+              <strong>{confirmAction.friend.username}</strong>?
             </p>
 
             <div className="flex justify-end gap-2">
@@ -290,14 +295,14 @@ export const FollowingList: React.FC<FollowingListProp> = ({ userId }) => {
               <Button
                 variant="destructive"
                 onClick={async () => {
-                  const { follower, operation } = confirmAction;
+                  const { friend, operation } = confirmAction;
                   setConfirmAction(null);
                   await handleButtonClick(
                     operation,
-                    follower._id,
+                    friend._id,
                     operation === "remove"
-                      ? follower.isFollower
-                      : follower.isFollowing
+                      ? friend.isFollower
+                      : friend.isFollowing
                   );
                 }}
               >

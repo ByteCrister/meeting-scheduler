@@ -4,7 +4,7 @@ import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Clock, Briefcase } from "lucide-react";
-import { SearchedUserProfile } from './SearchedProfile';
+import { SearchedUserProfile } from '../profile/SearchedProfile';
 
 
 export const ProfileHeader = ({ profile }: { profile: SearchedUserProfile }) => {

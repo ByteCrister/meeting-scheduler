@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from '../ui/card';
+import { Card } from '../../ui/card';
 
 
 const SearchedProfileSkeleton = () => {

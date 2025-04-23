@@ -1,113 +1,55 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, Users, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Calendar, Clock, Users, ChevronUp, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { ApiSPType } from '@/utils/constants';
+import { getSearchedUser } from '@/utils/client/api/api-searched-profile';
+import { isEqual } from 'lodash';
+import { BookedMeetingCardSkeleton } from './BookedMeetingCardSkeleton';
+import PaginateButtons from '@/components/global-ui/ui-component/PaginateButtons';
+import CAT from './CAT';
 
 interface BookedMeeting {
-  id: string;
+  _id: string;
   title: string;
   description?: string;
-  date: string;
-  time: string;
+  meetingDate: string;
+  durationFrom: string;
   duration: string;
   participants: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: "upcoming" | "ongoing" | "completed" | "expired";
   createdAt: string;
-}
-
-interface BookedMeetingsProps {
-  userId: string;
+  isBooked: boolean;
 }
 
 
-export const BookedMeetingCardSkeleton = () => {
-  return (
-    Array.from({ length: 3 }).map((_, index) => (
-      <motion.div
-        key={index}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: index * 0.1 }}
-      >
-        <Card className="p-6 rounded-3xl border border-muted bg-gradient-to-br from-background via-background/90 to-background/80 shadow-[0_8px_24px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300">
-          <div className="space-y-5">
-            {/* Title & Badge */}
-            <div className="flex justify-between items-start">
-              <Skeleton className="h-6 w-1/3 bg-neutral-300 rounded-md" />
-              <Skeleton className="h-5 w-20 bg-neutral-200 rounded-md" />
-            </div>
-
-            {/* Description */}
-            <Skeleton className="h-4 w-3/4 bg-neutral-300 rounded-md" />
-
-            {/* Info Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <Skeleton className="h-4 w-16 bg-neutral-200 rounded-md" />
-              </div>
-              <div className="flex items-center">
-                <Skeleton className="h-4 w-24 bg-neutral-200 rounded-md" />
-              </div>
-              <div className="flex items-center">
-                <Skeleton className="h-4 w-20 bg-neutral-200 rounded-md" />
-              </div>
-            </div>
-
-            {/* CTA Button */}
-            <div className="pt-1">
-              <Skeleton className="h-10 w-full bg-gray-700 rounded-xl" />
-            </div>
-          </div>
-        </Card>
-
-
-      </motion.div>
-    ))
-  )
-};
-
-export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
+export const MeetingSlots = ({ userId }: { userId: string; }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [meetings, setMeetings] = useState<BookedMeeting[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [loadingBtns, setLoadingBtns] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [maxItems] = useState<number>(3);
 
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMeetings([
-        {
-          id: '1',
-          title: 'Product Strategy Discussion',
-          description: 'Discuss strategic plans for Q2 launch and roadmap alignment.',
-          date: '2024-03-25',
-          time: '10:00 AM',
-          duration: '30 min',
-          participants: 5,
-          status: 'upcoming',
-          createdAt: '2024-03-20T09:00:00Z'
-        },
-        {
-          id: '2',
-          title: 'Technical Consultation',
-          description: 'Code review and technical direction for frontend stack.',
-          date: '2024-03-26',
-          time: '02:00 PM',
-          duration: '45 min',
-          participants: 3,
-          status: 'completed',
-          createdAt: '2024-03-18T15:30:00Z'
-        }
-      ]);
-
+    const fetchData = async () => {
+      setIsLoading(true);
+      const response = await getSearchedUser(userId, ApiSPType.GET_USER_MEETINGS);
+      const { data, success } = response.data as { data: BookedMeeting[], success: boolean };
+      if (success && !isEqual(data, meetings)) {
+        setMeetings(data);
+      }
       setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const getStatusBadge = (status: string) => {
@@ -124,10 +66,16 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
             Completed
           </Badge>
         );
-      case 'cancelled':
+      case 'ongoing':
+        return (
+          <Badge className="bg-green-100 text-gray-500 border border-gray-400 shadow-sm">
+            Ongoing
+          </Badge>
+        );
+      case 'expired':
         return (
           <Badge className="bg-red-100 text-red-700 border border-red-300 shadow-sm">
-            Cancelled
+            Expired
           </Badge>
         );
       default:
@@ -141,12 +89,28 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
 
     setMeetings((prev) => {
       return [...prev].sort((a, b) => {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
+        const dateA = new Date(a.meetingDate).getTime();
+        const dateB = new Date(b.meetingDate).getTime();
         return nextOrder === 'asc' ? dateA - dateB : dateB - dateA;
       });
     });
   };
+
+  const handleLoadingBtns = (
+    meetingSlotId: string,
+    operation: "add" | "delete"
+  ) => {
+    if (operation === "add") {
+      setLoadingBtns((prev) => ({ ...prev, [meetingSlotId]: true }));
+    } else {
+      setLoadingBtns((prev) => {
+        const updated = { ...prev };
+        delete updated[meetingSlotId];
+        return updated;
+      });
+    }
+  };
+
 
   if (isLoading) return <BookedMeetingCardSkeleton />;
 
@@ -188,9 +152,12 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
       </div>
 
       {
-        meetings.map((meeting, index) => (
+        meetings.slice(
+          maxItems * (currentPage - 1),
+          maxItems * (currentPage - 1) + maxItems
+        ).map((meeting, index) => (
           <motion.div
-            key={meeting.id}
+            key={meeting._id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -215,7 +182,7 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
                   <div className="flex items-center">
                     <Calendar className="mr-2 h-4 w-4 text-primary" />
                     <span>
-                      {new Date(meeting.date).toLocaleDateString('en-US', {
+                      {new Date(meeting.meetingDate).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric'
@@ -224,7 +191,7 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
                   </div>
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-primary" />
-                    <span>{meeting.time} ({meeting.duration})</span>
+                    <span>{meeting.durationFrom} ({meeting.duration})</span>
                   </div>
                   <div className="flex items-center">
                     <Users className="mr-2 h-4 w-4 text-primary" />
@@ -233,19 +200,21 @@ export const BookedMeetings: React.FC<BookedMeetingsProps> = ({ userId }) => {
                 </div>
 
                 {/* CTA Button */}
-                <div className="pt-1">
-                  <Button
-                    variant="default"
-                    className="w-full bg-gray-700 rounded-xl text-base font-medium flex items-center justify-center gap-2 group hover:bg-gray-800 transition-all"
-                  >
-                    <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                    Book Meeting
-                  </Button>
-                </div>
+                <CAT status={meeting.status} isBooked={meeting.isBooked} loadingBtns={loadingBtns} handleLoadingBtns={handleLoadingBtns} meetingSlotId={meeting._id} />
               </div>
             </Card>
           </motion.div>
         ))
+      }
+
+      {
+        meetings.length !== 0 &&
+        <PaginateButtons
+          currentPage={currentPage}
+          maxItems={maxItems}
+          totalItems={meetings.length}
+          handlePaginatePage={(newPage) => setCurrentPage(newPage)}
+        />
       }
     </div>
   );

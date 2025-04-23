@@ -10,6 +10,7 @@ import apiService from '@/utils/client/api/api-services';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
 import MeetingCardSkeleton from './MeetingCardSkeleton';
+import { APIBookMeeting } from '@/utils/client/api/api-book-meetings';
 
 
 export default function MeetingPostFeed() {
@@ -36,7 +37,7 @@ export default function MeetingPostFeed() {
 
         if (responseData.success) {
             hasMoreRef.current = false;
-            if(Object.values(responseData.data).length === 0) setHasMore(false);
+            if (Object.values(responseData.data).length === 0) setHasMore(false);
             dispatch(addNewsFeeds(staticFeeds));
         } else {
             setHasMore(false);
@@ -71,7 +72,7 @@ export default function MeetingPostFeed() {
     // ? API user booked a meeting slot
     const handleBookSlot = async (slotId: string) => {
         dispatch(toggleIsSlotBooking({ slotId: slotId, isBooking: true }));
-        const responseData = await apiService.post(`/api/user-slot-booking`, { slotId });
+        const responseData = await APIBookMeeting(slotId);
         if (responseData.success) {
             dispatch(removeNewsFeedSlot(slotId));
             ShowToaster(responseData.message, 'success');

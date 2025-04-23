@@ -4,6 +4,53 @@ import ConnectDB from "@/config/ConnectDB";
 import UserModel from "@/models/UserModel";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { Types } from "mongoose";
+import { formatUTCDateToOffset } from "@/utils/client/date-convertions/formatUTCDateToOffset";
+import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
+
+export const IGetDuration = (startTime: string, endTime: string): string => {
+    type Time = { hours: number; minutes: number };
+
+    const parseTime = (timeStr: string): Time => {
+        const [time, meridian] = timeStr.split(" ");
+        // eslint-disable-next-line prefer-const
+        let [hours, minutes] = time.split(":").map(Number);
+
+        if (meridian === "PM" && hours !== 12) hours += 12;
+        if (meridian === "AM" && hours === 12) hours = 0;
+
+        return { hours, minutes };
+    };
+
+    const start = parseTime(startTime);
+    const end = parseTime(endTime);
+
+    const startDate = new Date(0, 0, 0, start.hours, start.minutes);
+    const endDate = new Date(0, 0, 0, end.hours, end.minutes);
+
+    let diffMs = endDate.getTime() - startDate.getTime();
+
+    if (diffMs < 0) {
+        // If end time is before start time, assume it's the next day
+        diffMs += 24 * 60 * 60 * 1000;
+    }
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+        return `${hours} hr ${minutes} min`;
+    } else if (hours > 0) {
+        return `${hours} hr`;
+    } else {
+        return `${minutes} min`;
+    }
+}
+
+// ? Converting time durations into my time zone
+export const convertTimeByTimeZone = (targetTimeZone: string, toConvertTimeZone: string, time: string, date: string) => {
+    return targetTimeZone !== toConvertTimeZone ? getConvertedTime(date, time, toConvertTimeZone) : time;
+};
 
 
 interface PopulatedUser {
@@ -27,7 +74,7 @@ interface PopulatedSlot {
     _id: Types.ObjectId;
     title: string;
     description?: string;
-    meetingDate: Date;
+    meetingDate: string;
     durationFrom: string;
     durationTo: string;
     bookedUsers: Types.ObjectId[];
@@ -35,9 +82,6 @@ interface PopulatedSlot {
     createdAt: Date;
 }
 
-interface BookedSlotItem {
-    slotId: PopulatedSlot;
-}
 
 export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
@@ -56,7 +100,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const currentUser = await UserModel.findById(currentUserId).select("followers following");
+        const currentUser = await UserModel.findById(currentUserId).select("followers following timeZone");
 
         const query = UserModel.findById(searched_user_id); // Ensuring query object
 
@@ -143,23 +187,29 @@ export async function GET(req: NextRequest) {
             }
 
             case ApiSPType.GET_USER_MEETINGS: {
-                const bookedMeetings = (user.bookedSlots as BookedSlotItem[]).map(({ slotId }) => {
-                    const dateObj = new Date(slotId.meetingDate);
+                const registeredMeetingSlots = (user.registeredSlots as PopulatedSlot[]).map((slot) => {
+                    const ConvertedTimeZoneUTCDate = user.timeZone !== currentUser.timeZone
+                        ? formatUTCDateToOffset(slot.meetingDate, currentUser.timeZone)
+                        : slot.meetingDate;
+
+                    const convertedDurationFrom = convertTimeByTimeZone(user.timeZone, currentUser.timeZone, slot.durationFrom, slot.meetingDate);
+                    const convertedDurationTo = convertTimeByTimeZone(user.timeZone, currentUser.timeZone, slot.durationTo, slot.meetingDate);
 
                     return {
-                        _id: slotId._id,
-                        title: slotId.title,
-                        description: slotId.description,
-                        date: dateObj.toISOString().split("T")[0],
-                        time: dateObj.toISOString().split("T")[1].slice(0, 5),
-                        duration: `${slotId.durationFrom} - ${slotId.durationTo}`,
-                        participants: slotId.bookedUsers.length,
-                        status: slotId.status,
-                        createdAt: slotId.createdAt.toISOString(),
+                        _id: slot._id,
+                        title: slot.title,
+                        description: slot.description,
+                        meetingDate: ConvertedTimeZoneUTCDate,
+                        durationFrom: convertedDurationFrom,
+                        duration: IGetDuration(convertedDurationFrom, convertedDurationTo),
+                        participants: slot.bookedUsers.length,
+                        status: slot.status,
+                        createdAt: slot.createdAt,
+                        isBooked: slot.bookedUsers.some((uId) => uId.toString() === currentUserId),
                     };
                 });
 
-                return NextResponse.json({ success: true, data: bookedMeetings }, { status: 200 });
+                return NextResponse.json({ success: true, data: registeredMeetingSlots }, { status: 200 });
             }
 
             default:
