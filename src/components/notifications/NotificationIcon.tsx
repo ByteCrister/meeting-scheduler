@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Bell } from "lucide-react";
 import {
   Popover,
@@ -9,13 +9,26 @@ import {
 } from "@/components/ui/popover";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { ApiNotificationTypes } from "@/utils/constants";
-import { updateUserNotificationCount } from "@/lib/features/users/userSlice";
+import { addNotifications, updateUserNotificationCount } from "@/lib/features/users/userSlice";
 import ApiStatusUpdate from "@/utils/client/api/api-status-update";
 import NotificationCard from "./NotificationCard";
+import { APIgetAllInitialNotifications } from "@/utils/client/api/api-notifications";
+import { Notification } from "@/types/client-types";
 
 const NotificationIcon = () => {
   const { notifications, user } = useAppSelector((state) => state.userStore);
   const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const responseData = await APIgetAllInitialNotifications();
+      if (responseData.success) {
+        dispatch(addNotifications(responseData.data as Notification[]));
+      }
+    };
+
+    fetchData();
+  }, [dispatch]);
 
 
   // ? API refresh unseen notification count
@@ -23,6 +36,7 @@ const NotificationIcon = () => {
     if (user?.countOfNotifications !== 0) {
       const responseData = await ApiStatusUpdate(ApiNotificationTypes.REFRESH_NOTIFICATION);
       if (responseData.success) {
+        console.log(responseData.data);
         dispatch(updateUserNotificationCount(0));
       }
     }
@@ -54,8 +68,8 @@ const NotificationIcon = () => {
           </div>
 
           <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
-            {notifications?.map((notification) => (
-              <NotificationCard key={notification._id} notification={notification} />
+            {notifications?.map((notification, index) => (
+              <NotificationCard key={notification._id + notification.createdAt + index} notification={notification} />
             ))}
             {notifications?.length === 0 && <div className="h-96 flex items-center justify-center divide-gray-100">You have no notifications.</div>}
           </div>

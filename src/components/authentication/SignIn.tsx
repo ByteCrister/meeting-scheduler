@@ -3,7 +3,6 @@
 import { JSX, useState } from "react";
 import { useFormik } from 'formik';
 import { Open_Sans } from "next/font/google";
-import { useRouter } from "next/navigation";
 import { signInValidation } from "@/utils/client/auth-validation";
 import ShowToaster from "../global-ui/toastify-toaster/show-toaster";
 import apiService from "@/utils/client/api/api-services";
@@ -16,7 +15,6 @@ const openSans = Open_Sans({
 });
 
 const SignIn = () => {
-    const router = useRouter();
     const [isPasswordShow, setIsPasswordShow] = useState<boolean>(false);
     const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
@@ -33,10 +31,9 @@ const SignIn = () => {
                 const resData = await apiService.post(`/api/auth/user/signin`, data);
                 if (resData.success) {
                     ShowToaster("Successfully signed in.", "success");
-                    router.push("/");
                     setTimeout(() => {
-                        window.location.reload();
-                    }, 1);
+                        window.location.href = '/';
+                    }, 2000);
                 }
             }
             setIsButtonLoading(false);

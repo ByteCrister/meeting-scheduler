@@ -9,7 +9,7 @@ import {
 } from '@/components/my-slots/SlotCard';
 import { BookedSlotsTypes } from '@/types/client-types';
 import { setBookedMeetingCurrentPage, setSortedBookedMeetings } from '@/lib/features/booked-meetings/bookedSlice';
-import { getDuration } from '@/components/booked-meetings/MeetingCard';
+import { getDuration } from '@/utils/client/date-convertions/getDuration';
 
 
 const useBookedSearch = () => {

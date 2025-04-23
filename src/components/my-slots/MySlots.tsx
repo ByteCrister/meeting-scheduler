@@ -10,6 +10,7 @@ import PaginateButtons from '../global-ui/ui-component/PaginateButtons';
 import SlotCard from './SlotCard';
 import SearchSlots from './SearchSlots';
 import { toggleSlotDialog } from '@/lib/features/component-state/componentSlice';
+import { isEqual } from 'lodash';
 
 
 
@@ -19,32 +20,30 @@ type SortOrder = 'asc' | 'desc';
 
 export default function MySlots() {
 
-  const { tempStore, currentSlotPage } = useAppSelector(state => state.slotStore);
+  const { Store, tempStore, currentSlotPage } = useAppSelector(state => state.slotStore);
   const dispatch = useAppDispatch();
 
   const [isFetching, setIsFetching] = useState<boolean>(false);
-  const [maxItemsPerPage, setMaxItemsPerPage] = useState<number>(0);
+  const [maxItemsPerPage] = useState<number>(4);
 
   const [sortField, setSortField] = useState<selectedSlotFiled>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  // console.log(tempStore.length + ' - ' + currentSlotPage);
 
 
   useEffect(() => {
-    if(!isFetching){
+    if (!isFetching) {
       const fetchData = async () => {
         setIsFetching(true);
         const responseData = await apiService.get(`/api/user-slot-register`);
-        if (responseData.success) {
+        if (responseData.success && !isEqual(responseData.data, Store)) {
           dispatch(addSlots(responseData.data || []));
           dispatch(setCurrentPage(1));
-          setMaxItemsPerPage(4);
         }
         setIsFetching(false);
       };
       fetchData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
 
@@ -144,12 +143,13 @@ export default function MySlots() {
           : <>
             {/* Slots List */}
             <div className="space-y-4">
-              {tempStore.slice(
-                maxItemsPerPage * (currentSlotPage - 1),
-                (maxItemsPerPage * (currentSlotPage - 1)) + maxItemsPerPage
-              ).map((slot, index) => (
-                <SlotCard key={slot._id + slot.title + index} slot={slot} />
-              ))}
+              {tempStore && tempStore.length !== 0 && tempStore
+                .slice(
+                  maxItemsPerPage * (currentSlotPage - 1),
+                  (maxItemsPerPage * (currentSlotPage - 1)) + maxItemsPerPage
+                ).map((slot, index) => (
+                  <SlotCard key={slot._id + slot.title + index} slot={slot} />
+                ))}
             </div>
 
 

@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         await currentUser.save();
         await targetUser.save();
 
+        const now = new Date();
         const sendNewNotification = {
             type: INotificationType.FOLLOW,
             sender: userId, // Me - started following
@@ -95,10 +96,11 @@ export async function POST(req: NextRequest) {
             message: `${currentUser.username} started following you.`,
             isRead: false,
             isClicked: false,
-            createdAt: new Date()
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
         };
-        const NewNotification = await NotificationsModel.create(sendNewNotification);
-        const savedNotification = await NewNotification.save();
+        const notificationDoc = new NotificationsModel(sendNewNotification);
+        const savedNotification = await notificationDoc.save();
 
         // Emit via shared socket instance
         const io = getIOInstance();

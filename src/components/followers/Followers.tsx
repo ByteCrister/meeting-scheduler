@@ -20,40 +20,40 @@ export interface FriendTypes {
   isLoading: boolean,
 }
 
-const sampleFollowers: FriendTypes[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    title: 'Product Manager at TechCorp',
-    image: 'https://i.pravatar.cc/150?img=1',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    title: 'Senior Software Engineer',
-    image: 'https://i.pravatar.cc/150?img=2',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    title: 'UX Designer',
-    image: 'https://i.pravatar.cc/150?img=3',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '4',
-    name: 'David Kim',
-    title: 'Data Scientist',
-    image: 'https://i.pravatar.cc/150?img=4',
-    isRemoved: false,
-    isLoading: false,
-  },
-];
+// const sampleFollowers: FriendTypes[] = [
+//   {
+//     id: '1',
+//     name: 'Sarah Johnson',
+//     title: 'Product Manager at TechCorp',
+//     image: 'https://i.pravatar.cc/150?img=1',
+//     isRemoved: false,
+//     isLoading: false,
+//   },
+//   {
+//     id: '2',
+//     name: 'Michael Chen',
+//     title: 'Senior Software Engineer',
+//     image: 'https://i.pravatar.cc/150?img=2',
+//     isRemoved: false,
+//     isLoading: false,
+//   },
+//   {
+//     id: '3',
+//     name: 'Emily Rodriguez',
+//     title: 'UX Designer',
+//     image: 'https://i.pravatar.cc/150?img=3',
+//     isRemoved: false,
+//     isLoading: false,
+//   },
+//   {
+//     id: '4',
+//     name: 'David Kim',
+//     title: 'Data Scientist',
+//     image: 'https://i.pravatar.cc/150?img=4',
+//     isRemoved: false,
+//     isLoading: false,
+//   },
+// ];
 
 
 export default function Followers() {
@@ -67,20 +67,17 @@ export default function Followers() {
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    if (!friendList) {
       const fetchData = async () => {
         setIsFetching(true);
         const response = await getFollowers();
         if (response.success) {
-          if (response.data.length !== 0) dispatch(setFriendList(response.data));
-          else dispatch(setFriendList(sampleFollowers)); // * <- have to remove
+          dispatch(setFriendList(response.data));
           dispatch(setCurrentPage(1));
         }
         setIsFetching(false);
       };
       fetchData();
-    }
-  }, [dispatch, friendList]);
+  }, [dispatch]);
 
 
   const handleSearch = (searedItem: string) => {
@@ -134,7 +131,7 @@ export default function Followers() {
             </>
         }
         {
-          friendList?.length !== 0 && <PaginateButtons
+          friendList && friendList?.length !== 0 && <PaginateButtons
             currentPage={currentPage}
             maxItems={maxItemsPerPage}
             totalItems={friendList?.length || 0}
@@ -142,7 +139,7 @@ export default function Followers() {
           />
         }
 
-        {friendList?.length === 0 && (
+        {!friendList || friendList?.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No followers found</p>
           </div>

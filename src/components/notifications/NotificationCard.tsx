@@ -9,20 +9,23 @@ import { useRouter } from "next/navigation";
 import { NotificationType } from "@/utils/constants";
 import { toggleNotifyChangeDialog } from "@/lib/features/component-state/componentSlice";
 import { useAppDispatch } from "@/lib/hooks";
+import { updateNotification } from "@/lib/features/users/userSlice";
+import { APIupdateNotificationField } from "@/utils/client/api/api-notifications";
 
 const NotificationCard = ({ notification }: { notification: Notification }) => {
     const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
     const dispatch = useAppDispatch();
     const router = useRouter();
 
+
     const toggleMenu = (id: string) => {
         setOpenMenus((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const handleRouting = (slot_id: string) => {
+    const handleRouting = async (notificationId: string, slot_id: string) => {
         const type = notification.type;
-        const RoutingPath = type === NotificationType.FOLLOW
-            ? `/followers?user=${notification.sender}`
+        const RoutingPath = (type === NotificationType.FOLLOW || type === NotificationType.SLOT_BOOKED)
+            ? `/searched-profile?user=${notification.sender}`
             : type === NotificationType.SLOT_CREATED
                 ? `/meeting-post-feed?post=${slot_id}`
                 : NotificationType.SLOT_UPDATED
@@ -30,6 +33,15 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                     : type === NotificationType.SLOT_DELETED
                         ? `/searched-profile?user=${notification.sender}` : '';
         router.push(RoutingPath);
+
+        const resIsClicked = await APIupdateNotificationField('isClicked', true, notificationId);
+        const resIsRead = await APIupdateNotificationField('isRead', true, notificationId);
+
+        if (resIsClicked.success && resIsRead.success) {
+            dispatch(updateNotification({ field: 'isClicked', value: true, _id: notificationId }));
+            dispatch(updateNotification({ field: 'isRead', value: true, _id: notificationId }));
+        }
+
     };
 
     const handleMenuOptions = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -47,7 +59,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
     return (
         <div
             key={notification._id}
-            onClick={() => handleRouting(notification._id)}
+            onClick={() => handleRouting(notification._id, (notification.slot || ''))}
             className={`relative flex items-start space-x-4 px-4 py-3 ${!notification.isRead ? "bg-blue-50" : "bg-white"
                 } hover:bg-blue-100/40 transition-all cursor-pointer`}
         >
@@ -59,13 +71,20 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
                     </div>
                 )}
 
-                <Image
-                    src={notification.image}
-                    width={40}
-                    height={40}
-                    alt={notification.sender}
-                    className="rounded-full"
-                />
+                {/* Conditional rendering of Image component */}
+                {notification.image ? (
+                    <Image
+                        src={notification.image}
+                        width={40}
+                        height={40}
+                        alt={notification.sender}
+                        className="rounded-full"
+                    />
+                ) : (
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white">No Image</span>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 min-w-0">

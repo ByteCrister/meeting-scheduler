@@ -1,27 +1,60 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
+import apiService from '@/utils/client/api/api-services';
+import { debounce, isEqual } from 'lodash';
+import { useRouter } from 'next/navigation';
+
+interface SearchResult {
+  _id: string;
+  name: string;
+  matchedString: string;
+  href: string;
+}
 
 const SearchBar = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestions, setSuggestions] = useState([
-    'Team Meeting',
-    'Project Review',
-    'Client Call',
-    'Daily Standup',
-    'Brainstorming Session',
-  ]);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const debouncedFetchRef = useRef(
+    debounce(async (query: string) => {
+      setLoading(true);
+      const responseData = await apiService.get(`/api/searching?q=${query}`);
+      if (responseData.success && !isEqual(responseData.data, suggestions)) {
+        setSuggestions(responseData.data);
+      } else if (!responseData.success) {
+        setSuggestions([]);
+      }
+      setLoading(false);
+    }, 300)
+  );
+
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      debouncedFetchRef.current.cancel();
+    };
+  }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const query = e.target.value;
+    setSearchQuery(query);
     setShowSuggestions(true);
+
+    if (query.trim()) {
+      debouncedFetchRef.current(query);
+    } else {
+      setSuggestions([]);
+    }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setSearchQuery(suggestion);
+  const handleSuggestionClick = (href: string) => {
     setShowSuggestions(false);
+    router.push(href);
   };
 
   return (
@@ -43,18 +76,22 @@ const SearchBar = () => {
       {/* Suggestions Dropdown */}
       {showSuggestions && searchQuery && (
         <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-fade-in">
-          <div className="divide-y divide-gray-100">
-            {suggestions
-              .filter((suggestion) =>
-                suggestion.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((suggestion, index) => (
+          <div className="divide-y divide-gray-100 max-h-64 overflow-auto">
+            {loading && (
+              <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
+            )}
+            {!loading && suggestions.length === 0 && (
+              <div className="px-4 py-3 text-sm text-gray-500">No suggestions found</div>
+            )}
+            {!loading &&
+              suggestions.map((suggestion) => (
                 <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(suggestion)}
+                  key={suggestion._id}
+                  onClick={() => handleSuggestionClick(suggestion.href)}
                   className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
                 >
-                  {suggestion}
+                  <div className="font-medium">{suggestion.name}</div>
+                  <div className="text-xs text-gray-400">Matched: {suggestion.matchedString}</div>
                 </button>
               ))}
           </div>

@@ -18,6 +18,8 @@ import ListSkeleton from "./ListSkeleton";
 import LoadingSpinner from "@/components/global-ui/ui-component/LoadingSpinner";
 import PaginateButtons from "@/components/global-ui/ui-component/PaginateButtons";
 import Link from "next/link";
+import { useAppSelector } from "@/lib/hooks";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 interface FriendList {
@@ -91,6 +93,7 @@ const dummyFollowers: FriendList[] = [
 ];
 
 export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
+  const currentUserId = useAppSelector(state => state.userStore.user?._id);
   const [isLoading, setIsLoading] = useState(true);
   const [friendList, setFollowers] = useState<FriendList[]>([]);
   const [loadingBtns, setLoadingBtns] = useState<{ [key: string]: boolean }>(
@@ -111,7 +114,7 @@ export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
       const apiType = type === 'follower' ? ApiSPType.GET_USER_FOLLOWERS : ApiSPType.GET_USER_FOLLOWINGS
 
       const response = await getSearchedUser(userId || "", apiType);
-      const { data, success } = response.data as {
+      const { data, success } = response as {
         data: FriendList[];
         success: boolean;
       };
@@ -213,54 +216,69 @@ export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
                     </div>
                   </div>
 
-                  <Button
-                    id={`friend-${friend._id}`}
-                    size="sm"
-                    className={cn(
-                      "group px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-all duration-300",
-                      friend.isFollowing
-                        ? "border-muted text-muted-foreground bg-gray-50 hover:bg-destructive/10 hover:text-destructive"
-                        : "bg-primary text-white hover:bg-primary/90 shadow-sm"
-                    )}
-                    // ? If user's friend is my follower then return 'remove', if I follow to the user's follower then unFollow else follow
-                    onClick={() => {
-                      const operation = friend.isFollower
-                        ? "remove"
-                        : friend.isFollowing
-                          ? "unfollow"
-                          : "follow";
-                      const filedValue =
-                        operation === "remove"
-                          ? friend.isFollower
-                          : friend.isFollowing;
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="inline-block">
+                        <Button
+                          id={`friend-${friend._id}`}
+                          size="sm"
+                          disabled={currentUserId === friend._id}
+                          className={cn(
+                            "group px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 transition-all duration-300",
+                            friend.isFollowing
+                              ? "border-muted text-muted-foreground bg-gray-50 hover:bg-destructive/10 hover:text-destructive"
+                              : "bg-primary text-white hover:bg-primary/90 shadow-sm"
+                          )}
+                          onClick={() => {
+                            const operation = friend.isFollower
+                              ? "remove"
+                              : friend.isFollowing
+                                ? "unfollow"
+                                : "follow";
+                            const filedValue =
+                              operation === "remove"
+                                ? friend.isFollower
+                                : friend.isFollowing;
 
-                      if (operation === "unfollow" || operation === "remove") {
-                        setConfirmAction({ friend: friend, operation });
-                      } else {
-                        handleButtonClick(operation, friend._id, filedValue);
-                      }
-                    }}
-                  >
-                    {loadingBtns[friend._id] && loadingBtns[friend._id] ? (
-                      <LoadingSpinner />
-                    ) : friend.isFollowing ? (
-                      <>
-                        <UserMinus className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
-                        Unfollow
-                      </>
-                    ) : friend.isFollower ? (
-                      <>
-                        <UserPlus className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                        <span className="tracking-tight">Remove</span>
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                        <span className="tracking-tight">Follow</span>
-                      </>
+                            if (currentUserId === friend._id) return;
+
+                            if (operation === "unfollow" || operation === "remove") {
+                              setConfirmAction({ friend: friend, operation });
+                            } else {
+                              handleButtonClick(operation, friend._id, filedValue);
+                            }
+                          }}
+                        >
+                          {loadingBtns[friend._id] ? (
+                            <LoadingSpinner />
+                          ) : friend.isFollowing ? (
+                            <>
+                              <UserMinus className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
+                              Unfollow
+                            </>
+                          ) : friend.isFollower ? (
+                            <>
+                              <UserPlus className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                              <span className="tracking-tight">Remove</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                              <span className="tracking-tight">Follow</span>
+                            </>
+                          )}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-200" />
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+
+                    {currentUserId === friend._id && (
+                      <TooltipContent className="text-xs text-muted-foreground bg-white shadow-lg border px-2 py-1 rounded-md">
+                        You can&apos;t follow yourself!
+                      </TooltipContent>
                     )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform duration-200" />
-                  </Button>
+                  </Tooltip>
+
                 </div>
               </Card>
             </motion.div>

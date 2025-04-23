@@ -20,7 +20,7 @@ const EditableField = ({
     handleLoadingChange: (isLoading: boolean) => void
 }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [tempValue, setTempValue] = useState(value);
+    const [tempValue, setTempValue] = useState(value?? '');
     const [hovered, setHovered] = useState(false);
 
 

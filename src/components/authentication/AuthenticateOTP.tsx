@@ -2,7 +2,6 @@
 
 import { useTimer } from "react-timer-hook";
 import { userSignInType, userSignUpType } from "@/types/client-types";
-import { useRouter } from "next/navigation";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import ShowToaster from "../global-ui/toastify-toaster/show-toaster";
 import apiService from "@/utils/client/api/api-services";
@@ -20,8 +19,6 @@ const AuthenticateOTP = ({ userInfo, setIsEmailChecked, setCurrentAuthPage, setP
     const [currOtpBox, setCurrOtpBox] = useState<number>(0);
     const [isOtpExpired, setIsOtpExpired] = useState<boolean>(false);
     const [isOTPSend, setIsOTPSend] = useState<boolean>(false);
-
-    const router = useRouter();
 
     // Set the expiry time (3 minutes from now)
     const time = new Date();
@@ -66,10 +63,9 @@ const AuthenticateOTP = ({ userInfo, setIsEmailChecked, setCurrentAuthPage, setP
         const resData = await apiService.post(`/api/auth/user/signup`, { ...userInfo });
         if (resData.success) {
             ShowToaster('Successfully registered.', 'success');
-            router.push('/user-authentication'); // * after signup user will redirect for sign in
             setTimeout(() => {
-                window.location.reload();
-            }, 1);
+                window.location.href = '/';
+            }, 2000);
 
         }
     };

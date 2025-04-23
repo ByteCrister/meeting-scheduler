@@ -2,7 +2,7 @@
 
 import { Area } from "@/components/global-ui/dialoges/ImageCropDialog";
 import { toggleAlertDialog } from "@/lib/features/component-state/componentSlice";
-import { reduxUsersInitialState, initialComponentStateTypes } from "@/types/client-types";
+import { userSliceInitialState, componentSliceInitialTypes } from "@/types/client-types";
 import { ThunkDispatch, UnknownAction, Dispatch } from "@reduxjs/toolkit";
 
 /*
@@ -10,7 +10,7 @@ import { ThunkDispatch, UnknownAction, Dispatch } from "@reduxjs/toolkit";
     * Check Image Size < 2
     * Call base64 converter & set converted Image string
 */
-export const handleImage = async (event: React.ChangeEvent<HTMLInputElement>, dispatch: ThunkDispatch<{ userStore: reduxUsersInitialState; componentStore: initialComponentStateTypes; }, undefined, UnknownAction> & Dispatch<UnknownAction>) => {
+export const handleImage = async (event: React.ChangeEvent<HTMLInputElement>, dispatch: ThunkDispatch<{ userStore: userSliceInitialState; componentStore: componentSliceInitialTypes; }, undefined, UnknownAction> & Dispatch<UnknownAction>) => {
     const file = event.target.files?.[0];
     if (!file) {
         console.log("No file selected");

@@ -66,11 +66,11 @@ export const POST = async (req: NextRequest) => {
     }
 };
 
-// ? Delete request from ProfileDropdown.tsx -> handleLogOut() -> AlertLogout.tsx -> handleLogout()
+// ? Delete request from  -> performLogOut() -> AlertLogout.tsx -> handleLogout()
 export const DELETE = async () => {
     try {
         const cookieStore = cookies();
-        (await cookieStore).delete(process.env.COOKIE_TOKEN!);
+        (await cookieStore).delete(process.env.NEXT_TOKEN!);
 
         // Respond with a success message
         return NextResponse.json({ message: "Logged out successfully.", success: true }, { status: 200 });

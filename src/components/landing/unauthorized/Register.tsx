@@ -113,7 +113,7 @@ export default function Register() {
       <footer className="container mx-auto px-4 py-8 mt-20 border-t border-gray-200">
         <div className="flex justify-between items-center">
           <Logo />
-          <p className="text-gray-500">© 2024 MeetSync. All rights reserved.</p>
+          <p className="text-gray-500">© 2025 MeetSync. All rights reserved.</p>
         </div>
       </footer>
     </div>

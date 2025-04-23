@@ -7,11 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ApiSPType } from '@/utils/constants';
-import { getSearchedUser } from '@/utils/client/api/api-searched-profile';
+import { getSearchedUser, GetSearchedUserResponse } from '@/utils/client/api/api-searched-profile';
 import { isEqual } from 'lodash';
-import { BookedMeetingCardSkeleton } from './BookedMeetingCardSkeleton';
+import { MeetingSlotCardSkeleton } from './MeetingSlotCardSkeleton';
 import PaginateButtons from '@/components/global-ui/ui-component/PaginateButtons';
 import CAT from './CAT';
+import { useAppSelector } from '@/lib/hooks';
+import { formatUTCDateToOffset } from '@/utils/client/date-convertions/formatUTCDateToOffset';
+import { getConvertedTime } from '@/utils/client/date-convertions/convertDateTime';
+import { getDuration } from '@/utils/client/date-convertions/getDuration';
 
 interface BookedMeeting {
   _id: string;
@@ -19,15 +23,40 @@ interface BookedMeeting {
   description?: string;
   meetingDate: string;
   durationFrom: string;
-  duration: string;
+  durationTo: string;
   participants: number;
   status: "upcoming" | "ongoing" | "completed" | "expired";
   createdAt: string;
   isBooked: boolean;
 }
 
+export const getMDInMyTZ = (currentTimeZone: string, userTimeZone: string, slotMeetingDate: string) => {
+  const isDifferentTZ = currentTimeZone !== userTimeZone;
+  const meetingDate = isDifferentTZ
+    ? formatUTCDateToOffset(slotMeetingDate, currentTimeZone)
+    : slotMeetingDate;
 
-export const MeetingSlots = ({ userId }: { userId: string; }) => {
+  return meetingDate;
+};
+
+export const getConvertedDurationTime = (currentTimeZone: string, userTimeZone: string, meetingDate: string, time: string) => {
+  const isDifferentTZ = currentTimeZone !== userTimeZone;
+  const convertedTime = isDifferentTZ ? getConvertedTime(meetingDate, time, currentTimeZone) : time;
+  return convertedTime;
+}
+
+export const getTimeDurationInMyTZ = (currentTimeZone: string, userTimeZone: string, meetingDate: string, fromTime: string, toTime: string) => {
+  const from = getConvertedDurationTime(currentTimeZone, userTimeZone, meetingDate, fromTime);
+  const to = getConvertedDurationTime(currentTimeZone, userTimeZone, meetingDate, toTime);
+  const timeDuration = getDuration(from, to);
+  return timeDuration;
+}
+
+
+
+
+export const MeetingSlots = ({ userId, userTimeZone }: { userId: string; userTimeZone: string }) => {
+  const currentUserTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
   const [isLoading, setIsLoading] = useState(true);
   const [meetings, setMeetings] = useState<BookedMeeting[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -41,16 +70,18 @@ export const MeetingSlots = ({ userId }: { userId: string; }) => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const response = await getSearchedUser(userId, ApiSPType.GET_USER_MEETINGS);
-      const { data, success } = response.data as { data: BookedMeeting[], success: boolean };
+      const responseData = await getSearchedUser(userId, ApiSPType.GET_USER_MEETINGS) as GetSearchedUserResponse<BookedMeeting[]>;
+      const { data, success } = responseData as { data: BookedMeeting[], success: boolean };
       if (success && !isEqual(data, meetings)) {
         setMeetings(data);
       }
       setIsLoading(false);
     };
+
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -112,8 +143,15 @@ export const MeetingSlots = ({ userId }: { userId: string; }) => {
   };
 
 
-  if (isLoading) return <BookedMeetingCardSkeleton />;
+  if (isLoading || !currentUserTimeZone) return <MeetingSlotCardSkeleton />;
 
+  if (meetings.length === 0) {
+    return (
+      <div className="w-full text-center py-6 text-muted-foreground text-sm italic">
+        User has no meetings yet.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -151,7 +189,7 @@ export const MeetingSlots = ({ userId }: { userId: string; }) => {
         </Button>
       </div>
 
-      {
+      {meetings && meetings.length > 0 &&
         meetings.slice(
           maxItems * (currentPage - 1),
           maxItems * (currentPage - 1) + maxItems
@@ -182,7 +220,9 @@ export const MeetingSlots = ({ userId }: { userId: string; }) => {
                   <div className="flex items-center">
                     <Calendar className="mr-2 h-4 w-4 text-primary" />
                     <span>
-                      {new Date(meeting.meetingDate).toLocaleDateString('en-US', {
+                      {new Date(
+                        getMDInMyTZ(currentUserTimeZone!, userTimeZone, meeting.meetingDate)
+                      ).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric'
@@ -191,7 +231,11 @@ export const MeetingSlots = ({ userId }: { userId: string; }) => {
                   </div>
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-primary" />
-                    <span>{meeting.durationFrom} ({meeting.duration})</span>
+                    <span>
+                      {getConvertedDurationTime(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom)}
+                      ({
+                        getTimeDurationInMyTZ(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom, meeting.durationTo)
+                      })</span>
                   </div>
                   <div className="flex items-center">
                     <Users className="mr-2 h-4 w-4 text-primary" />

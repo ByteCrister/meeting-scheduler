@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { APIBookMeeting, APIDeleteMeeting } from "@/utils/client/api/api-book-meetings";
 import { Plus } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 
 type PropType = {
     status: "upcoming" | "ongoing" | "completed" | "expired";
@@ -40,6 +40,8 @@ export default CAT;
 
 function TooltipCATButton({ status, isBooked, loadingBtns, handleLoadingBtns, meetingSlotId }: PropType) {
 
+    const [isMeetingBooked, setIsMeetingBooked] = useState<boolean>(isBooked);
+
     const handleBooking = async () => {
         handleLoadingBtns(meetingSlotId, 'add');
         const responseData = await APIBookMeeting(meetingSlotId);
@@ -47,6 +49,7 @@ function TooltipCATButton({ status, isBooked, loadingBtns, handleLoadingBtns, me
             ShowToaster(responseData.message, 'success');
         }
         handleLoadingBtns(meetingSlotId, 'delete');
+        setIsMeetingBooked(prev => !prev);
     };
 
     const handleRemoveBooking = async () => {
@@ -56,6 +59,7 @@ function TooltipCATButton({ status, isBooked, loadingBtns, handleLoadingBtns, me
             ShowToaster(responseData.message, 'success');
         }
         handleLoadingBtns(meetingSlotId, 'delete');
+        setIsMeetingBooked(prev => !prev);
     }
 
     const message = statusMessages[status] || "Meeting time has expired.";
@@ -69,11 +73,11 @@ function TooltipCATButton({ status, isBooked, loadingBtns, handleLoadingBtns, me
                             : <Button
                                 variant="default"
                                 disabled={loadingBtns[meetingSlotId] || status !== "upcoming"}
-                                onClick={() => isBooked ? handleRemoveBooking() : handleBooking()}
+                                onClick={() => isMeetingBooked ? handleRemoveBooking() : handleBooking()}
                                 className="w-full bg-gray-700 rounded-xl text-base font-medium flex items-center justify-center gap-2 group hover:bg-gray-800 transition-all"
                             >
                                 <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                {isBooked ? "Remove Meeting " : "Book Meeting"}
+                                {isMeetingBooked ? "Remove Meeting " : "Book Meeting"}
                             </Button>
                     }
                 </TooltipTrigger>

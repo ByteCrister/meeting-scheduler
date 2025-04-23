@@ -32,7 +32,7 @@ const FollowerCard = ({ follower }: { follower: FriendTypes; }) => {
         >
             <div className="p-4">
                 <div className="flex items-center justify-between">
-                    <Link href={`/profile/${follower.id}`} className="flex items-center space-x-4 flex-1">
+                    <Link href={`/searched-profile?user=${follower.id}`} className="flex items-center space-x-4 flex-1">
                         <div className="relative w-12 h-12 rounded-full overflow-hidden">
                             <Image
                                 src={follower.image}

@@ -6,48 +6,11 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import useFriendListSearch from '@/hooks/useFriendListSearch';
 import { getFollowing } from '@/utils/client/api/api-friendZone';
 import { setCurrentPage, setFriendList } from '@/lib/features/friend-zone/friendZoneSlice';
-import { FriendTypes } from '../followers/Followers';
 import PaginateButtons from '../global-ui/ui-component/PaginateButtons';
 import FriendDropDialog from '../global-ui/dialoges/FriendDropDialog';
 import { Search } from 'lucide-react';
 import FollowingCard from './FollowingCard';
 import FollowingCardSkeleton from './FollowingCardSkeleton';
-
-
-const sampleFollowers: FriendTypes[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    title: 'Product Manager at TechCorp',
-    image: 'https://i.pravatar.cc/150?img=1',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    title: 'Senior Software Engineer',
-    image: 'https://i.pravatar.cc/150?img=2',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    title: 'UX Designer',
-    image: 'https://i.pravatar.cc/150?img=3',
-    isRemoved: false,
-    isLoading: false,
-  },
-  {
-    id: '4',
-    name: 'David Kim',
-    title: 'Data Scientist',
-    image: 'https://i.pravatar.cc/150?img=4',
-    isRemoved: false,
-    isLoading: false,
-  },
-];
 
 
 export default function Following() {
@@ -61,22 +24,17 @@ export default function Following() {
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    if (!friendList) {
-      const fetchData = async () => {
-        setIsFetching(true);
-        const response = await getFollowing();
-        if (response.success) {
-          dispatch(setFriendList(response.data));
-          dispatch(setCurrentPage(1));
-        } else {
-          dispatch(setCurrentPage(1));
-          dispatch(setFriendList(sampleFollowers)); // * <- have to remove
-        }
-        setIsFetching(false);
-      };
-      fetchData();
-    }
-  }, [dispatch, friendList]);
+    const fetchData = async () => {
+      setIsFetching(true);
+      const response = await getFollowing();
+      if (response.success) {
+        dispatch(setFriendList(response.data));
+        dispatch(setCurrentPage(1));
+      }
+      setIsFetching(false);
+    };
+    fetchData();
+  }, [dispatch]);
 
 
   const handleSearch = (searedItem: string) => {
@@ -138,7 +96,7 @@ export default function Following() {
 
         {!friendList || friendList.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No users found</p>
+            <p className="text-gray-500">You are not following anyone yet.</p>
           </div>
         )}
       </div>

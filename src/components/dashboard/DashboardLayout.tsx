@@ -4,11 +4,11 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '../layout/Logo';
-import Image from 'next/image';
 import SearchBar from '../layout/SearchBar';
 import NotificationIcon from '../notifications/NotificationIcon';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { toggleSidebar, setSidebarState } from '@/lib/features/sidebarSlice';
+import UserLogout from './user-logout/UserLogout';
 // import NotificationIcon from '../layout/NotificationIcon';
 
 
@@ -169,21 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* User Profile Section */}
-          <div className="p-4 border-t border-gray-700">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer shadow-inner">
-              <Image
-                src="https://i.pravatar.cc/150?img=1"
-                width={40}
-                height={40}
-                alt="User"
-                className="rounded-full border-2 border-blue-500"
-              />
-              <div>
-                <p className="text-white font-semibold">John Doe</p>
-                <p className="text-gray-400 text-xs">john@example.com</p>
-              </div>
-            </div>
-          </div>
+          <UserLogout />
         </div>
       </aside>
 
@@ -205,9 +191,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
               <div className="flex-1 max-w-2xl mx-4">
+                {/* Global Search bar */}
                 <SearchBar />
               </div>
               <div className="flex items-center space-x-4">
+                {/* Global Notification */}
                 <NotificationIcon />
                 <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                   <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

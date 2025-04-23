@@ -88,20 +88,23 @@ export async function POST(req: NextRequest) {
 
             // 3. Notify followers
             const user = await UserModel.findById(userId).select("followers image");
+            const now = new Date();
             const baseNotification = {
                 type: INotificationType.SLOT_CREATED,
                 sender: userId,
                 message: `New meeting slot "${newSlot.title}" just dropped!`,
                 isRead: false,
                 isClicked: false,
-                createdAt: new Date(),
+                createdAt: now,
+                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
             if (user?.followers?.length && io) {
                 await Promise.all(
                     user.followers.map(async (followerId: string) => {
                         const notification = { ...baseNotification, receiver: followerId };
-                        const saved = await NotificationsModel.create(notification);
+                        const notificationDoc = new NotificationsModel(notification);
+                        const saved = await notificationDoc.save();
 
                         const socketId = getUserSocketId(followerId);
                         if (socketId) {
@@ -136,13 +139,15 @@ export async function POST(req: NextRequest) {
             // Notify booked users (not followers)
             const user = await UserModel.findById(userId).select("image");
 
+            const now = new Date();
             const baseNotification = {
                 type: INotificationType.SLOT_UPDATED,
                 sender: userId,
                 message: `Meeting slot "${updatedSlot?.title}" was updated.`,
                 isRead: false,
                 isClicked: false,
-                createdAt: new Date(),
+                createdAt: now,
+                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
             if (updatedSlot?.bookedUsers?.length && io) {
@@ -219,6 +224,7 @@ export async function DELETE(req: NextRequest) {
         // ! Notification block
         if (slot.status === RegisterSlotStatus.Upcoming) { // * (Condition) - notify booked users only if the meeting slot delete before meeting starts 
             // 1. Notify "CANCEL message" to the user's who booked this meeting slot 
+            const now = new Date();
             const sendNewNotification = {
                 type: INotificationType.SLOT_DELETED,
                 sender: userId, // Me - booked a meeting slot
@@ -226,7 +232,8 @@ export async function DELETE(req: NextRequest) {
                 message: `Meeting of ${slot.title} is cancelled.`,
                 isRead: false,
                 isClicked: false,
-                createdAt: new Date()
+                createdAt: now,
+                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
             // Emit meeting cancel notification to the user's who booked this meeting slot.
@@ -235,8 +242,8 @@ export async function DELETE(req: NextRequest) {
                 await Promise.all(
                     slot.bookedUsers.map(async (bookedUserId: string) => {
                         const notificationData = { ...sendNewNotification, receiver: bookedUserId };
-                        const NewNotification = await NotificationsModel.create(notificationData);
-                        const savedNotification = await NewNotification.save();
+                        const notificationDoc = new NotificationsModel(notificationData);
+                        const savedNotification = await notificationDoc.save();
 
                         const socketId = getUserSocketId(bookedUserId);
                         if (socketId) {

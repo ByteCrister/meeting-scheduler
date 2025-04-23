@@ -5,7 +5,6 @@ import { useFormik } from 'formik';
 import { IoEyeSharp } from "react-icons/io5";
 import { IoEyeOffSharp } from "react-icons/io5";
 import { Open_Sans } from "next/font/google";
-import { useRouter } from "next/navigation";
 import { userSignInType, userSignUpType } from "@/types/client-types";
 import { forgotPassEmailValidation, forgotPassPasswordValidation } from "@/utils/client/auth-validation";
 import apiService from "@/utils/client/api/api-services";
@@ -26,7 +25,6 @@ type ForgotPasswordPropTypes = {
 };
 
 const ForgotPassword = ({ setPageState, setUserInfo, userInfo, isEmailChecked }: ForgotPasswordPropTypes) => {
-    const router = useRouter();
     const [isPasswordShow, setIsPasswordShow] = useState<boolean>(false);
     const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
@@ -68,10 +66,9 @@ const ForgotPassword = ({ setPageState, setUserInfo, userInfo, isEmailChecked }:
         const resData = await apiService.post(`/api/auth/user/forgot-password`, data);
         if (resData.success) {
             ShowToaster('Password Updated successfully.', 'success');
-            router.push('/');
             setTimeout(() => {
-                window.location.reload();
-            }, 1);
+                window.location.href = '/';
+            }, 2000);
         }
     };
 

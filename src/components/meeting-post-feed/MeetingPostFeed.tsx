@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { staticFeeds } from '@/utils/client/data';
 import MeetingCard from './MeetingCard';
 import { addNewsFeeds, removeNewsFeedSlot, toggleIsSlotBooking } from '@/lib/features/news-feed/newsFeedSlice';
 import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
@@ -38,11 +37,7 @@ export default function MeetingPostFeed() {
         if (responseData.success) {
             hasMoreRef.current = false;
             if (Object.values(responseData.data).length === 0) setHasMore(false);
-            dispatch(addNewsFeeds(staticFeeds));
-        } else {
-            setHasMore(false);
-            dispatch(addNewsFeeds(staticFeeds));
-            pageRef.current += 1;
+            dispatch(addNewsFeeds(responseData.data));
         }
 
         fetchLoadingRef.current = false;
@@ -84,7 +79,7 @@ export default function MeetingPostFeed() {
     return (
         <div className="max-w-3xl mx-auto px-4 py-10">
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">📅 Meeting Feed</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Meeting Feed</h1>
                 <p className="text-sm text-gray-500">Tap a card to view more and book</p>
             </div>
 

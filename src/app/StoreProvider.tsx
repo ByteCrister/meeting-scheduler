@@ -30,7 +30,6 @@ export default function StoreProvider({
   // * Creating dispatch
   const dispatch = storeRef.current.dispatch;
 
-  //  * Hooks
   const [state, setState] = useState<{ user: null | Users, loading: boolean }>({ user: null, loading: true });
 
   useEffect(() => {
@@ -62,29 +61,17 @@ export default function StoreProvider({
           <SlotDropDialog />
           <NotifyChangeDialog />
           <BookedSlotDialog />
-          <AlertDeleteBookedSlot />
           <AlertDialogComponent />
+          <AlertDeleteBookedSlot />
           <NotificationSocketProvider />
         </DashboardLayout>
         // ! else : wrap component for unauthorized user
-        : <>{children}</>
+        : <>
+          {children}
+          <AlertDialogComponent />
+        </>
     }
 
   </Provider>;
-
-
-  // return <Provider store={storeRef.current}>
-  //   <DashboardLayout>
-  //     {children}
-  // <AlertLogout />
-  // <MeetingDialog />
-  // <SlotDropDialog />
-  // <NotifyChangeDialog />
-  // <AlertDialogComponent />
-  // <NotificationSocketProvider />
-  //  </DashboardLayout>
-
-  //   {/* <>{children}</> */}
-  // </Provider>;
 }
 

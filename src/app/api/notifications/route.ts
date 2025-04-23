@@ -18,35 +18,82 @@ export async function GET(req: NextRequest) {
         const user = await UserModel.findById(userId).select("disabledNotificationUsers");
         const disabledSenders = user?.disabledNotificationUsers || [];
 
-        // Parse pagination
-        const { searchParams } = new URL(req.url);
-        const page = parseInt(searchParams.get("page") || "1", 10);
-        const limit = parseInt(searchParams.get("limit") || "10", 10);
-        const skip = (page - 1) * limit;
-
         // Fetch notifications where sender is NOT in the disabled list
         const allNotifications = await NotificationsModel.find({
             receiver: userId,
             sender: { $nin: disabledSenders },
         })
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
+            .populate("sender", "name image") // Populate sender's name and image
             .lean();
 
-        const notificationsWithFlag = allNotifications.map((notification) => ({
-            ...notification,
-            isDisabled: false
+        const notificationsFlat = allNotifications.map((notification) => ({
+            _id: notification._id,
+            type: notification.type,
+            sender: notification.sender?._id || "", // ID of sender
+            receiver: notification.receiver,
+            name: notification.sender?.name || "", // Sender's name
+            image: notification.sender?.image || "", // Sender's image
+            post: notification.post || null,
+            slot: notification.slot || null,
+            message: notification.message,
+            isRead: notification.isRead,
+            isClicked: notification.isClicked,
+            isDisable: false, // You can set this to false, or use your own logic
+            createdAt: notification.createdAt.toISOString(), // Ensure it's in string format
         }));
 
-        return NextResponse.json({ data: notificationsWithFlag, success: true }, { status: 200 });
+        return NextResponse.json({ data: notificationsFlat, success: true }, { status: 200 });
+
     } catch (err) {
         console.log("GET /notifications error:", err);
         return NextResponse.json({ message: "Internal server error" }, { status: 500 });
     }
 }
 
-// ? PUT api from NotificationChangeDialog.tsx
+// ? To update isClicked and isRead
+export async function POST(req: NextRequest) {
+    try {
+        const { searchParams } = req.nextUrl;
+        const field = searchParams.get("field");
+        const value = searchParams.get("value");
+        const notificationId = searchParams.get("notificationId");
+
+        // Validate required parameters
+        if (!field || !value || !notificationId) {
+            return NextResponse.json({ message: "Missing required fields: field, value, or notificationId." }, { status: 400 });
+        }
+
+        // Validate 'field' and 'value' parameters
+        if (!["isRead", "isClicked"].includes(field)) {
+            return NextResponse.json({ message: "Invalid field." }, { status: 400 });
+        }
+
+        if (value !== "true" && value !== "false") {
+            return NextResponse.json({ message: "Invalid value. Must be 'true' or 'false'." }, { status: 400 });
+        }
+
+        const booleanValue = value === "true";
+
+        // Find and update the notification
+        const updatedNotification = await NotificationsModel.findByIdAndUpdate(
+            notificationId,
+            { [field]: booleanValue },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedNotification) {
+            return NextResponse.json({ message: "Notification not found." }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: "Notification updated successfully.", updatedNotification, success: true }, { status: 200 });
+    } catch (error) {
+        console.error("Error updating notification:", error);
+        return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    }
+}
+
+// ? PUT api from NotifyChangeDialog.tsx
 export async function PUT(req: NextRequest) {
     try {
         await ConnectDB();
@@ -91,7 +138,7 @@ export async function PUT(req: NextRequest) {
     }
 }
 
-// ? DELETE api from NotificationChangeDialog.tsx
+// ? DELETE api from NotifyChangeDialog.tsx
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();

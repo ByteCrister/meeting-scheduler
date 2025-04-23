@@ -23,6 +23,7 @@ export interface SearchedUserProfile {
   followers: number;
   following: number;
   meetingSlots: number;
+  isFollowing: boolean;
 }
 
 const tabs = [
@@ -59,11 +60,10 @@ export const SearchedProfile: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      // const userId='6804a796916f0077ddcd21fa';
-      const response = await getSearchedUser(userId || '', ApiSPType.GET_USER);
-      const { data, success } = response.data as { data: SearchedUserProfile, success: boolean };
+      const responseData = await getSearchedUser(userId || '', ApiSPType.GET_USER);
+      const { data, success } = responseData as { data: SearchedUserProfile, success: boolean };
       if (success) {
-        // if (currentUserId === data._id) router.push('/');
+        if (currentUserId === data._id) router.push('/');
         setProfile(data);
         setCount({ followers: data.followers, following: data.following, meetings: data.meetingSlots });
       }
@@ -117,7 +117,7 @@ export const SearchedProfile: React.FC = () => {
         <div className="mt-4">
           {activeTab === 'meetings' && (
             <div className="p-4">
-              <MeetingSlots userId={profile._id} />
+              <MeetingSlots userId={profile._id} userTimeZone={profile.timezone} />
             </div>
           )}
           {activeTab === 'followers' && (

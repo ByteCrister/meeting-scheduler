@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { toggleNotifyChangeDialog } from "@/lib/features/component-state/componentSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import apiService from "@/utils/client/api/api-services";
 import React, { useState } from "react";
 import ShowToaster from "../../global-ui/toastify-toaster/show-toaster";
 import { deleteNotification, updateNotification } from "@/lib/features/users/userSlice";
 import LoadingSpinner from "../ui-component/LoadingSpinner";
+import { APIdeleteNotification, APIputChangePreference } from "@/utils/client/api/api-notifications";
 
 const NotifyChangeDialog = () => {
     const { isOpen, mode, senderId, notificationId, isDisable } = useAppSelector(
@@ -38,10 +38,19 @@ const NotifyChangeDialog = () => {
     // ? API delete notification
     const handleDelete = async () => {
         seIsLoading(true);
-        const responseData = await apiService.delete('/api/notifications', { notificationId });
+        const responseData = await APIdeleteNotification (notificationId!);
         if (responseData.success) {
             dispatch(deleteNotification(notificationId!));
             ShowToaster(responseData.message, 'success');
+            dispatch(
+                toggleNotifyChangeDialog({
+                    isOpen: false,
+                    notificationId: null,
+                    senderId: null,
+                    mode: mode,
+                    isDisable: false
+                })
+            );
         }
         seIsLoading(false);
     };
@@ -49,10 +58,19 @@ const NotifyChangeDialog = () => {
     // ? API mute user notification or enable  
     const handleChangePreference = async () => {
         seIsLoading(true);
-        const responseData = await apiService.put('/api/notifications', { senderId });
+        const responseData = await APIputChangePreference(senderId!);
         if (responseData.success) {
-            dispatch(updateNotification({ field: 'isDisable', value: responseData.isDisable, _id: notificationId! }));
+            dispatch(updateNotification({ field: 'isDisable', value: responseData.isDisable!, _id: notificationId! }));
             ShowToaster(responseData.message, 'success');
+            dispatch(
+                toggleNotifyChangeDialog({
+                    isOpen: false,
+                    notificationId: null,
+                    senderId: null,
+                    mode: mode,
+                    isDisable: false
+                })
+            );
         }
         seIsLoading(false);
     };

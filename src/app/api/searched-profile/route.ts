@@ -4,53 +4,6 @@ import ConnectDB from "@/config/ConnectDB";
 import UserModel from "@/models/UserModel";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { Types } from "mongoose";
-import { formatUTCDateToOffset } from "@/utils/client/date-convertions/formatUTCDateToOffset";
-import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
-
-export const IGetDuration = (startTime: string, endTime: string): string => {
-    type Time = { hours: number; minutes: number };
-
-    const parseTime = (timeStr: string): Time => {
-        const [time, meridian] = timeStr.split(" ");
-        // eslint-disable-next-line prefer-const
-        let [hours, minutes] = time.split(":").map(Number);
-
-        if (meridian === "PM" && hours !== 12) hours += 12;
-        if (meridian === "AM" && hours === 12) hours = 0;
-
-        return { hours, minutes };
-    };
-
-    const start = parseTime(startTime);
-    const end = parseTime(endTime);
-
-    const startDate = new Date(0, 0, 0, start.hours, start.minutes);
-    const endDate = new Date(0, 0, 0, end.hours, end.minutes);
-
-    let diffMs = endDate.getTime() - startDate.getTime();
-
-    if (diffMs < 0) {
-        // If end time is before start time, assume it's the next day
-        diffMs += 24 * 60 * 60 * 1000;
-    }
-
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-
-    if (hours > 0 && minutes > 0) {
-        return `${hours} hr ${minutes} min`;
-    } else if (hours > 0) {
-        return `${hours} hr`;
-    } else {
-        return `${minutes} min`;
-    }
-}
-
-// ? Converting time durations into my time zone
-export const convertTimeByTimeZone = (targetTimeZone: string, toConvertTimeZone: string, time: string, date: string) => {
-    return targetTimeZone !== toConvertTimeZone ? getConvertedTime(date, time, toConvertTimeZone) : time;
-};
 
 
 interface PopulatedUser {
@@ -153,7 +106,8 @@ export async function GET(req: NextRequest) {
                             image: user.image,
                             followers: user.followers.length,
                             following: user.following.length,
-                            meetingSlots: user.registeredSlots.length
+                            meetingSlots: user.registeredSlots.length,
+                            isFollowing: user.followers.some((u: { userId: { _id: string } }) => u.userId._id.toString() === currentUserId) // * Am I following him/her?
                         }
                     },
                     { status: 200 }
@@ -161,7 +115,8 @@ export async function GET(req: NextRequest) {
             }
 
             case ApiSPType.GET_USER_FOLLOWERS: {
-                const followers = (user.followers as FollowerItem[]).map((f) => ({
+                // console.log(user.followers);
+                const followers = ((user.followers as FollowerItem[]) || []).map((f) => ({
                     _id: f.userId._id,
                     username: f.userId.username,
                     image: f.userId.image,
@@ -174,7 +129,7 @@ export async function GET(req: NextRequest) {
             }
 
             case ApiSPType.GET_USER_FOLLOWINGS: {
-                const following = (user.following as FollowerItem[]).map((f) => ({
+                const following = ((user.following as FollowerItem[]) || []).map((f) => ({
                     _id: f.userId._id,
                     username: f.userId.username,
                     image: f.userId.image,
@@ -187,30 +142,25 @@ export async function GET(req: NextRequest) {
             }
 
             case ApiSPType.GET_USER_MEETINGS: {
-                const registeredMeetingSlots = (user.registeredSlots as PopulatedSlot[]).map((slot) => {
-                    const ConvertedTimeZoneUTCDate = user.timeZone !== currentUser.timeZone
-                        ? formatUTCDateToOffset(slot.meetingDate, currentUser.timeZone)
-                        : slot.meetingDate;
-
-                    const convertedDurationFrom = convertTimeByTimeZone(user.timeZone, currentUser.timeZone, slot.durationFrom, slot.meetingDate);
-                    const convertedDurationTo = convertTimeByTimeZone(user.timeZone, currentUser.timeZone, slot.durationTo, slot.meetingDate);
+                const registeredMeetingSlots = ((user.registeredSlots as PopulatedSlot[]) || []).map((slot) => {
 
                     return {
                         _id: slot._id,
                         title: slot.title,
                         description: slot.description,
-                        meetingDate: ConvertedTimeZoneUTCDate,
-                        durationFrom: convertedDurationFrom,
-                        duration: IGetDuration(convertedDurationFrom, convertedDurationTo),
+                        meetingDate: slot.meetingDate,
+                        durationFrom: slot.durationFrom,
+                        durationTo: slot.durationTo,
                         participants: slot.bookedUsers.length,
                         status: slot.status,
                         createdAt: slot.createdAt,
-                        isBooked: slot.bookedUsers.some((uId) => uId.toString() === currentUserId),
+                        isBooked: slot.bookedUsers.includes(new Types.ObjectId(currentUserId)),
                     };
                 });
 
                 return NextResponse.json({ success: true, data: registeredMeetingSlots }, { status: 200 });
             }
+
 
             default:
                 return NextResponse.json({ success: false, message: "Invalid type value" }, { status: 400 });

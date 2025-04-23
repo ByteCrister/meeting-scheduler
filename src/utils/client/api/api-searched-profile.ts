@@ -1,9 +1,9 @@
 import { ApiSPType } from "@/utils/constants";
 import axios, { AxiosError } from "axios"
 
-interface GetSearchedUserResponse {
+export interface GetSearchedUserResponse<T = unknown> {
     success: boolean;
-    data: unknown;
+    data: T | null;
 }
 
 export const getSearchedUser = async (
@@ -12,7 +12,7 @@ export const getSearchedUser = async (
 ): Promise<GetSearchedUserResponse> => {
     try {
         const response = await axios.get(`/api/searched-profile?searched_user_id=${userId}&type=${apiType}`, { withCredentials: true });
-        return { success: true, data: response.data };
+        return { success: true, data: response.data.data };
     } catch (error: unknown) {
         if (error instanceof AxiosError) {
             console.log(error.response?.data.message);

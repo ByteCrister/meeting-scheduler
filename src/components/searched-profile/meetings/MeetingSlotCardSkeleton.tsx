@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from 'framer-motion';
 
-export const BookedMeetingCardSkeleton = () => {
+export const MeetingSlotCardSkeleton = () => {
     return (
         Array.from({ length: 3 }).map((_, index) => (
             <motion.div
@@ -11,7 +11,7 @@ export const BookedMeetingCardSkeleton = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-                <Card className="p-6 rounded-3xl border border-muted bg-gradient-to-br from-background via-background/90 to-background/80 shadow-[0_8px_24px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+                <Card className="p-6 rounded-3xl border border-muted bg-gradient-to-br from-background via-background/90 to-background/80 shadow-[0_8px_24px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300 mt-2.5">
                     <div className="space-y-5">
                         {/* Title & Badge */}
                         <div className="flex justify-between items-start">

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronUp, ChevronDown } from 'lucide-react';
-import { dummyOfBookedSlotsData } from '@/utils/client/data';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import apiService from '@/utils/client/api/api-services';
 import { addBookedMeetings, setBookedMeetingCurrentPage } from '@/lib/features/booked-meetings/bookedSlice';
@@ -28,9 +27,7 @@ export default function BookedMeetings() {
       setIsFetching(true);
       const responseData = await apiService.get('/api/user-slot-booking');
       if (responseData.success) {
-        if (responseData.data.length !== 0) dispatch(addBookedMeetings(responseData.data));
-
-        else dispatch(addBookedMeetings(dummyOfBookedSlotsData));
+        dispatch(addBookedMeetings(responseData.data));
       }
       setIsFetching(false);
     };
