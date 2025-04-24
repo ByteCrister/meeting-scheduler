@@ -1,13 +1,22 @@
 export function formatUTCDateToOffset(utcDateStr: string, offsetStr: string): string {
-    // Create a Date object from the UTC string.
     const utcDate = new Date(utcDateStr);
 
-    // Validate and extract information from the offset string.
-    // Expected format: "UTC+06:00" or "UTC-05:30", etc.
+    // Clean up and normalize the offset string
+    let cleanedOffset = offsetStr.trim();
+
+    // Fix missing "+" if it's in format like "UTC 06:00" or "06:00"
+    if (/^UTC\s?\d{2}:\d{2}$/.test(cleanedOffset)) {
+        cleanedOffset = cleanedOffset.replace(/^UTC\s?/, 'UTC+');
+    } else if (/^\d{2}:\d{2}$/.test(cleanedOffset)) {
+        cleanedOffset = 'UTC+' + cleanedOffset;
+    }
+
+    // Make sure it matches "UTC±HH:MM"
     const offsetRegex = /^UTC([+-])(\d{2}):(\d{2})$/;
-    const match = offsetStr.match(offsetRegex);
+    const match = cleanedOffset.match(offsetRegex);
 
     if (!match) {
+        console.error('Invalid time zone offset format received:', offsetStr);
         throw new Error("Invalid offset format. Expected format: 'UTC+HH:MM'");
     }
 
@@ -15,14 +24,9 @@ export function formatUTCDateToOffset(utcDateStr: string, offsetStr: string): st
     const hours = parseInt(match[2], 10);
     const minutes = parseInt(match[3], 10);
 
-    // Calculate the total offset in minutes.
     const totalOffsetMinutes = sign * (hours * 60 + minutes);
-
-    // Adjust the UTC time by the offset.
-    // Date.getTime() returns milliseconds, so multiply minutes by 60000.
     const localTime = new Date(utcDate.getTime() + totalOffsetMinutes * 60000);
 
-    // Format the resulting date. We use 'UTC' as the timeZone here because we've already applied the offset.
     return localTime.toLocaleString("en-US", {
         timeZone: "UTC",
         year: "numeric",

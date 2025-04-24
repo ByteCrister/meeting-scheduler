@@ -67,6 +67,8 @@ export interface NewsFeedTypes {
     owner: {
         username: string;
         image: string;
+        owner_id: string;
+        timeZone: string;
     };
     title: string;
     description: string;

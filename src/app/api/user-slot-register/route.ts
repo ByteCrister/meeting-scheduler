@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// ? Post API from SlotStateFooter.tsx to create or update any slot
+// ? Post API to create or update any slot
 export async function POST(req: NextRequest) {
     try {
         await ConnectDB();
@@ -106,6 +106,9 @@ export async function POST(req: NextRequest) {
                         const notificationDoc = new NotificationsModel(notification);
                         const saved = await notificationDoc.save();
 
+                        // ? Incrementing count of new notification by 1+ for each followers
+                        await UserModel.findByIdAndUpdate(followerId, { $inc: { countOfNotifications: 1 } }, { new: true });
+
                         const socketId = getUserSocketId(followerId);
                         if (socketId) {
                             io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
@@ -156,6 +159,9 @@ export async function POST(req: NextRequest) {
                         const notification = { ...baseNotification, receiver: bookedUserId };
                         const saved = await NotificationsModel.create(notification);
 
+                        // ? Incrementing count of new notification by 1+ for each user's who booked the meeting slot
+                        await UserModel.findByIdAndUpdate(bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true });
+
                         const socketId = getUserSocketId(bookedUserId);
                         if (socketId) {
                             io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
@@ -187,7 +193,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// ? Delete API from SlotDropDialog.tsx
+// ? Delete API
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
@@ -244,6 +250,9 @@ export async function DELETE(req: NextRequest) {
                         const notificationData = { ...sendNewNotification, receiver: bookedUserId };
                         const notificationDoc = new NotificationsModel(notificationData);
                         const savedNotification = await notificationDoc.save();
+
+                        // ? Incrementing count of new notification by 1+ for each user's who booked the meeting slot
+                        await UserModel.findByIdAndUpdate( bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true } );
 
                         const socketId = getUserSocketId(bookedUserId);
                         if (socketId) {

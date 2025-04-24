@@ -7,20 +7,51 @@ import { Calendar, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
 import { NewsFeedTypes } from '@/types/client-types';
+import { useRouter } from 'next/navigation';
+import { formatUTCDateToOffset } from '@/utils/client/date-convertions/formatUTCDateToOffset';
+import { useAppSelector } from '@/lib/hooks';
+import { getConvertedTime } from '@/utils/client/date-convertions/convertDateTime';
 
 type PropTypes = {
     feed: NewsFeedTypes;
     handleBookSlot: (slotId: string) => Promise<void>;
-}
+    isExpand: boolean;
+    meetingPost: string | null
+};
 
-const MeetingCard = ({ feed, handleBookSlot }: PropTypes) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+
+const actualConvertedDurationTime = (meetingDate: string, durationTime: string, targetTimeZone: string, userTimeZone: string) => {
+    const isSameTimeZone = targetTimeZone === userTimeZone;
+    return isSameTimeZone ? durationTime : getConvertedTime(meetingDate, durationTime, userTimeZone);
+};
+
+const MeetingCard = ({ feed, handleBookSlot, isExpand, meetingPost }: PropTypes) => {
+    const userTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
+    const [isExpanded, setIsExpanded] = useState(isExpand);
     const bookedCount = feed.bookedUsers.length;
+    const router = useRouter();
+
+    if (!feed || !feed.owner || !feed.title) {
+        return (
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 text-center text-gray-500 italic">
+                <p>This meeting post is unavailable or might have been removed.</p>
+            </div>
+        );
+    };
+
+    const handleProfileClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        router.push(`/searched-profile?user=${feed.owner.owner_id}`);
+    }
 
     return (
         <motion.div
             layout
-            className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-all overflow-hidden"
+            className={`rounded-xl border transition-all overflow-hidden 
+            ${feed._id === meetingPost
+                    ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-300 shadow-md scale-[1.005]'
+                    : 'bg-white border-gray-200 hover:shadow-md shadow-sm'}
+        `}
         >
             {/* Header */}
             <motion.div
@@ -28,12 +59,12 @@ const MeetingCard = ({ feed, handleBookSlot }: PropTypes) => {
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="flex items-center justify-between px-4 py-3 cursor-pointer"
             >
-                <div className="flex items-center gap-4">
+                <div onClick={handleProfileClick} className="flex items-center gap-4 group">
                     <div className="relative w-10 h-10 rounded-full overflow-hidden">
                         <Image src={feed.owner.image} alt={feed.owner.username} fill className="object-cover" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-semibold text-gray-800 text-sm">{feed.owner.username}</span>
+                        <div className="font-semibold text-gray-800 text-sm group-hover:underline">{feed.owner.username}</div>
                         <span className="text-sm text-gray-600 font-medium">{feed.title}</span>
                     </div>
                 </div>
@@ -42,7 +73,9 @@ const MeetingCard = ({ feed, handleBookSlot }: PropTypes) => {
                     {/* Calendar icon with date */}
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                         <Calendar className="w-4 h-4" />
-                        <span>{format(new Date(feed.meetingDate), 'MMM d')}</span>
+                        <span>{format(new Date(
+                            formatUTCDateToOffset(feed.meetingDate, userTimeZone!)
+                        ), 'MMM d')}</span>
                     </div>
                     {/* Chevron */}
                     <motion.div
@@ -86,7 +119,11 @@ const MeetingCard = ({ feed, handleBookSlot }: PropTypes) => {
                                 <div className="bg-gray-50 p-3 rounded-lg">
                                     <p className="text-gray-500">Time</p>
                                     <p className="text-gray-800 font-medium">
-                                        {feed.durationFrom} - {feed.durationTo}
+                                        {
+                                            `${actualConvertedDurationTime(feed.meetingDate, feed.durationFrom, feed.owner.timeZone, userTimeZone!)} - 
+                                            ${actualConvertedDurationTime(feed.meetingDate, feed.durationTo, feed.owner.timeZone, userTimeZone!)}
+                                            `
+                                        }
                                     </p>
                                 </div>
                                 <div className="bg-gray-50 p-3 rounded-lg">

@@ -3,93 +3,160 @@ import { NextRequest, NextResponse } from 'next/server';
 import ConnectDB from '@/config/ConnectDB';
 import UserModel, { IUsers } from '@/models/UserModel';
 import SlotModel, { ISlot } from '@/models/SlotModel';
-import mongoose from 'mongoose';
 import { getUserIdFromRequest } from '@/utils/server/getUserFromToken';
-
+import mongoose from 'mongoose';
+import Fuse from 'fuse.js';
 
 interface SearchResult {
     _id: string;
     name: string;
     matchedString: string;
     href: string;
+    field: 'user' | 'slot';
+}
+
+interface IUserLean extends IUsers {
+    _id: mongoose.Types.ObjectId;
+}
+
+interface ISlotLean extends ISlot {
+    _id: mongoose.Types.ObjectId;
+}
+
+// Highlight matching content from given fields
+function highlightMatch<T>(doc: T, query: string, fields: (keyof T)[]): string {
+    const lowered = query.toLowerCase();
+
+    for (const field of fields) {
+        const value = doc[field];
+        if (typeof value === 'string' && value.toLowerCase().includes(lowered)) {
+            return value;
+        }
+
+        if (Array.isArray(value)) {
+            const found = value.find((v: string) => v.toLowerCase().includes(lowered));
+            if (found) return found;
+        }
+    }
+
+    return '';
 }
 
 export const GET = async (req: NextRequest): Promise<NextResponse> => {
     const { searchParams } = req.nextUrl;
-    const query = searchParams.get('q');
+    const query = searchParams.get('q')?.trim();
     const userId = await getUserIdFromRequest(req);
+
     if (!userId) {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     if (!query) {
-        return NextResponse.json({ message: 'Missing query parameter `q`' }, { status: 400 });
+        return NextResponse.json({ success: false, message: 'Missing query parameter `q`' }, { status: 400 });
     }
 
     try {
         await ConnectDB();
-        const regex = new RegExp(query, 'i');
 
-        const [users, slots] = await Promise.all([
-            UserModel.find({
-                $or: [
-                    { username: regex },
-                    { email: regex },
-                    { profession: regex },
-                    { title: regex }
-                ]
-            }).lean<(IUsers & { _id: mongoose.Types.ObjectId })[]>(),
-
-            SlotModel.find({
-                $or: [
-                    { title: regex },
-                    { category: regex },
-                    { description: regex },
-                    { tags: { $in: [regex] } }
-                ]
-            }).lean<(ISlot & { _id: mongoose.Types.ObjectId })[]>()
+        const [usersRaw, slotsRaw] = await Promise.all([
+            UserModel.find().lean<IUserLean[]>(),
+            SlotModel.find().lean<ISlotLean[]>()
         ]);
 
-        const userResults: SearchResult[] = users.map(user => {
-            const matchedField = ['username', 'email', 'profession', 'title'].find(field =>
-                (user[field as keyof IUsers] as string)?.match(regex)
-            );
-
-            return {
-                _id: user._id.toString(),
-                name: user.username,
-                matchedString: matchedField ? (user[matchedField as keyof IUsers] as string) : '',
-                href: `/searched-profile?user=${user._id.toString()}`
-            };
+        // Filter out fully booked slots
+        // ? Get only available meetings in search
+        const availableSlots = slotsRaw.filter(slot => {
+            const booked = slot.bookedUsers?.length || 0;
+            const capacity = slot.guestSize || 0;
+            return booked < capacity;
         });
 
-        const slotResults: SearchResult[] = slots.map(slot => {
-            const matchedField =
-                ['title', 'category', 'description'].find(field =>
-                    (slot[field as keyof ISlot] as string)?.match(regex)
-                ) || (slot.tags?.find(tag => tag.match(regex)) && 'tags');
+        // Fuse config for fuzzy searching users
+        const userFuse = new Fuse(usersRaw, {
+            keys: ['username', 'email', 'profession', 'title'],
+            threshold: 0.3,
+            distance: 100,
+            ignoreLocation: true,
+            minMatchCharLength: 2,
+        });
 
-            const isBooked = userId ? slot.bookedUsers?.some(id => id.toString() === userId) : false;
+        // Fuse config for fuzzy searching slots
+        const slotFuse = new Fuse(availableSlots, {
+            keys: ['title', 'category', 'description', 'tags'],
+            threshold: 0.3,
+            distance: 100,
+            ignoreLocation: true,
+            minMatchCharLength: 2,
+        });
+
+        const users = userFuse.search(query).map(result => result.item);
+        const slots = slotFuse.search(query).map(result => result.item);
+
+        const userResults: SearchResult[] = users.map(user => ({
+            _id: user._id.toString(),
+            field: 'user',
+            name: user.username,
+            matchedString: highlightMatch(user, query, ['username', 'email', 'profession', 'title']),
+            href: `/searched-profile?user=${user._id.toString()}`,
+        }));
+
+        const slotResults: SearchResult[] = slots.map(slot => {
+            const isMySlot = slot.ownerId?.toString() === userId;
+            const isBooked = slot.bookedUsers?.some(id => id.toString() === userId);
+
+            let href = `/meeting-post-feed?meeting-post=${slot._id.toString()}`;
+            if (isMySlot) href = `/my-slots?slot=${slot._id.toString()}`;
+            else if (isBooked) href = `/booked-meetings?meeting-slot=${slot._id.toString()}`;
 
             return {
                 _id: slot._id.toString(),
+                field: 'slot',
                 name: slot.title,
-                matchedString:
-                    matchedField === 'tags'
-                        ? (slot.tags.find(tag => tag.match(regex)) ?? '')
-                        : (matchedField ? (slot[matchedField as keyof ISlot] as string) : ''),
-                href: isBooked
-                    ? `/booked-meetings?meeting-slot=${slot._id.toString()}`
-                    : `/meeting-post-feed?post=${slot._id.toString()}`
+                matchedString: highlightMatch(slot, query, ['title', 'category', 'description', 'tags']),
+                href,
             };
         });
 
         const results: SearchResult[] = [...userResults, ...slotResults];
 
-        return NextResponse.json({ data: results, success: true });
+        return NextResponse.json({ data: results, success: true }, { status: 200 });
 
     } catch (error) {
         console.error('Search error:', error);
-        return NextResponse.json({ message: 'Server error' }, { status: 500 });
+        return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
     }
 };
+
+// ? Put api to increment users search score by 1 for each search clicked.
+export async function PUT(req: NextRequest) {
+    try {
+        await ConnectDB();
+
+        const userId = await req.json();
+
+        if (!userId) {
+            return NextResponse.json({ success: false, message: 'User ID is required' }, { status: 400 });
+        }
+
+        // Increment the searchScore by 1
+        const user = await UserModel.findByIdAndUpdate(
+            userId,
+            { $inc: { searchScore: 1 } },
+            { new: true } // returns the updated document
+        );
+
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+        }
+
+
+        return NextResponse.json({
+            success: true,
+            message: 'Search score incremented by 1',
+            newScore: user.searchScore,
+        });
+    } catch (error) {
+        console.error('Error updating search score:', error);
+        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+    }
+}

@@ -36,27 +36,40 @@ export const formatDateStringToDateYear = (dateString?: string) => {
 };
 
 
-const SlotCard = ({ slot }: { slot: registerSlot }) => {
+import { Sparkles } from "lucide-react";
+
+const SlotCard = ({ slot, isSearchedSlot }: { slot: registerSlot, isSearchedSlot: boolean }) => {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300"
+            className={`relative rounded-xl transition-all duration-300 overflow-hidden
+                ${isSearchedSlot 
+                    ? 'bg-white/70 backdrop-blur-md shadow-lg ring-2 ring-offset-2 ring-blue-400/60 animate-pulse-slow'
+                    : 'bg-white shadow-sm hover:shadow-md'}
+            `}
         >
+            {/* "Matched" Badge */}
+            {isSearchedSlot && (
+                <div className="absolute top-2 left-2 flex items-center gap-1 bg-blue-900 text-white text-[11px] px-2 py-0.5 rounded-full shadow-md z-10">
+                    <Sparkles className="w-3 h-3" />
+                    Matched Result
+                </div>
+            )}
+
             <div className="p-6">
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-gray-900">
                                 {slot.title}
-                                {/* Show the createdAt in subscript style if available */}
                                 <span className="text-sm text-gray-400 align-baseline ml-1">
                                     <sub>{formatDateStringToDateYear(slot.createdAt!)}</sub>
                                 </span>
                             </h3>
-                            {/* Slot option */}
                             <SlotOption slot={slot} />
                         </div>
+
                         <div className="mt-4 flex flex-wrap gap-3">
                             <div className="flex items-center text-sm text-gray-500">
                                 <Tag className="w-4 h-4 mr-1" />
@@ -83,5 +96,6 @@ const SlotCard = ({ slot }: { slot: registerSlot }) => {
         </motion.div>
     );
 };
+
 
 export default SlotCard;

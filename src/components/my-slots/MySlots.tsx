@@ -11,6 +11,7 @@ import SlotCard from './SlotCard';
 import SearchSlots from './SearchSlots';
 import { toggleSlotDialog } from '@/lib/features/component-state/componentSlice';
 import { isEqual } from 'lodash';
+import { useSearchParams } from 'next/navigation';
 
 
 
@@ -19,6 +20,8 @@ type SortFieldButtons = 'title' | 'category' | 'bookingCount' | 'status' | 'meet
 type SortOrder = 'asc' | 'desc';
 
 export default function MySlots() {
+  const searchParams = useSearchParams();
+  const searchedMeetingSlot = searchParams?.get('slot') || '';
 
   const { Store, tempStore, currentSlotPage } = useAppSelector(state => state.slotStore);
   const dispatch = useAppDispatch();
@@ -35,12 +38,27 @@ export default function MySlots() {
       const fetchData = async () => {
         setIsFetching(true);
         const responseData = await apiService.get(`/api/user-slot-register`);
-        if (responseData.success && !isEqual(responseData.data, Store)) {
-          dispatch(addSlots(responseData.data || []));
-          dispatch(setCurrentPage(1));
+
+        if (responseData.success && Array.isArray(responseData.data)) {
+          const data = [...responseData.data];
+
+          if (searchedMeetingSlot) {
+            const searchedIndex = data.findIndex(item => item._id === searchedMeetingSlot);
+            if (searchedIndex !== -1) {
+              const [searchedSlot] = data.splice(searchedIndex, 1);
+              data.unshift(searchedSlot);
+            }
+          }
+
+          if (!isEqual(data, Store)) {
+            dispatch(addSlots(data));
+            dispatch(setCurrentPage(1));
+          }
         }
+
         setIsFetching(false);
       };
+
       fetchData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,7 +166,7 @@ export default function MySlots() {
                   maxItemsPerPage * (currentSlotPage - 1),
                   (maxItemsPerPage * (currentSlotPage - 1)) + maxItemsPerPage
                 ).map((slot, index) => (
-                  <SlotCard key={slot._id + slot.title + index} slot={slot} />
+                  <SlotCard key={slot._id + slot.title + index} slot={slot} isSearchedSlot={slot._id === searchedMeetingSlot} />
                 ))}
             </div>
 

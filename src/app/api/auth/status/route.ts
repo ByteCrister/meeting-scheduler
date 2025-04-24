@@ -85,6 +85,8 @@ export async function PUT(req: NextRequest) {
         const field = searchParams.get('field');
         const value = searchParams.get('value');
 
+        console.log(searchParams);
+
         if (!field || !value) {
             return NextResponse.json({ message: 'Missing query parameters' }, { status: 400 });
         }
@@ -111,7 +113,7 @@ export async function PUT(req: NextRequest) {
         }
 
         return NextResponse.json(
-            { success: true, updated: { [field]: updatedUser[field as keyof typeof updatedUser] } },
+            { success: true, message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully.`, updated: { [field]: updatedUser[field as keyof typeof updatedUser] } },
             { status: 200 }
         );
     } catch (error) {

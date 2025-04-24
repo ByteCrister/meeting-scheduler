@@ -4,14 +4,11 @@ import React, { useRef, useState } from 'react';
 import EditableField from './EditableField';
 import StatCard from './StatCard';
 import ProfileImage from './ProfileImage';
-import { useAppSelector } from '@/lib/hooks';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { handleImage } from '@/utils/client/image-handler';
 import ImageCropDialog from '../global-ui/dialoges/ImageCropDialog';
-import apiService from '@/utils/client/api/api-services';
-import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
 import LoadingUIBlackBullfrog from '../global-ui/ui-component/LoadingUIBlackBullfrog';
-import { useDispatch } from 'react-redux';
-import { updateUserInfo } from '@/lib/features/users/userSlice';
+
 
 // interface ProfileData {
 //   username: string;
@@ -56,7 +53,7 @@ const LoadingButtonState: LoadingButtonStateType = {
 
 export default function ProfileComponent() {
   const { user } = useAppSelector(state => state.userStore);
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   const [isLoading, setIsLoading] = useState<LoadingButtonStateType>(LoadingButtonState)
 
@@ -87,20 +84,12 @@ export default function ProfileComponent() {
   };
 
 
-  // * Update fields
-  const updateProfileField = async (filed: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
-    const responseData = await apiService.put(`/api/auth/status?field=${filed}&value=${value}`);
-    if (responseData.success) {
-      dispatch(updateUserInfo({ field: filed, updatedValue: value }));
-      ShowToaster(responseData.message, 'success');
-    }
-  };
 
   // * Change button loading
-  const handleLoadingChange = (filed: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), isLoading: boolean) => {
+  const handleLoadingChange = (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), isLoading: boolean) => {
     setIsLoading(prev => ({
       ...prev,
-      [filed]: isLoading
+      [field]: isLoading
     }));
   };
 
@@ -125,28 +114,28 @@ export default function ProfileComponent() {
                 value={user.username}
                 isLoading={isLoading.username}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('username', isLoading)}
-                onUpdate={(value) => updateProfileField('username', value)}
+                field={'username'}
               />
               <EditableField
                 label="Title"
                 value={user.title}
                 isLoading={isLoading.title}
+                field={'title'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('title', isLoading)}
-                onUpdate={(value) => updateProfileField('title', value)}
               />
               <EditableField
                 label="Profession"
                 value={user.profession}
                 isLoading={isLoading.profession}
+                field={'profession'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('profession', isLoading)}
-                onUpdate={(value) => updateProfileField('profession', value)}
               />
               <EditableField
                 label="Timezone"
                 value={user.timeZone}
                 isLoading={isLoading.timeZone}
+                field={'timeZone'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('timeZone', isLoading)}
-                onUpdate={(value) => updateProfileField('timeZone', value)}
               />
             </div>
 

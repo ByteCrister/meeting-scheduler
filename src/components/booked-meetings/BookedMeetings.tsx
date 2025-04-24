@@ -9,9 +9,12 @@ import PaginateButtons from '../global-ui/ui-component/PaginateButtons';
 import BookedMeetingsSkeleton from './BookedMeetingsSkeleton';
 import MeetingCard from './MeetingCard';
 import useBookedSearch from '@/hooks/useBookedSearch';
+import { useSearchParams } from 'next/navigation';
 
 
 export default function BookedMeetings() {
+  const searchParams = useSearchParams();
+  const searchedBookSlot = searchParams?.get('meeting-slot') || '';
   const { bookedMeetings, currentPage } = useAppSelector(state => state.meetingStore);
   const dispatch = useAppDispatch();
   const SearchBookedMeetings = useBookedSearch();
@@ -26,13 +29,24 @@ export default function BookedMeetings() {
     const fetchData = async () => {
       setIsFetching(true);
       const responseData = await apiService.get('/api/user-slot-booking');
+
       if (responseData.success) {
-        dispatch(addBookedMeetings(responseData.data));
+        const data = [...responseData.data];
+
+        if (searchedBookSlot) {
+          const searchedIndex = data.findIndex(item => item._id === searchedBookSlot);
+
+          if (searchedIndex !== -1) {
+            const [searchedSlot] = data.splice(searchedIndex, 1);
+            data.unshift(searchedSlot);
+          }
+        }
+        dispatch(addBookedMeetings(data));
       }
       setIsFetching(false);
     };
     fetchData();
-  }, [dispatch]);
+  }, [dispatch, searchedBookSlot]);
 
 
   const paginatedMeetings = useMemo(() => {

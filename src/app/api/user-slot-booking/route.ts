@@ -131,6 +131,8 @@ export async function POST(req: NextRequest,) {
         };
         const notificationDoc = new NotificationsModel(sendNewNotification);
         const savedNotification = await notificationDoc.save();
+        // ? Incrementing count of new notification by 1+ for the meeting slot owner
+        await UserModel.findByIdAndUpdate(slot.ownerId, { $inc: { countOfNotifications: 1 } }, { new: true });
 
         // Emit via shared socket instance
         const io = getIOInstance();
@@ -152,6 +154,7 @@ export async function POST(req: NextRequest,) {
         }
 
         // 9: Notify all followers of the slot owner
+        // ? This will trigger in frontend & change the slot booked guest count, to show the real-time guest booking number 
         const slotOwner = await UserModel.findById(slot.ownerId).select("followers");
 
         if (slotOwner?.followers?.length) {
@@ -181,7 +184,7 @@ export async function POST(req: NextRequest,) {
     }
 };
 
-// ? Delete on AlertDeleteBookedSlot to delete any booked slot
+// ? Delete API to delete any booked slot
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
@@ -221,6 +224,7 @@ export async function DELETE(req: NextRequest) {
         }
 
         // 5: Notify other users who follow the slot owner, that one guest is removed **Only if the meeting is still upcoming
+        // ? This will trigger in frontend & change the slot booked guest count, to show the real-time guest booking number 
         if (slot.status !== IRegisterStatus.Upcoming) {
             // Notify all followers of the slot owner
             const slotOwner = await UserModel.findById(slot.ownerId).select("followers");

@@ -5,31 +5,49 @@ import { useState } from 'react';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
 import Profession from './Profession';
 import TimeZone from './TimeZone';
+import { useAppDispatch } from '@/lib/hooks';
+import { updateUserInfo } from '@/lib/features/users/userSlice';
+import apiService from '@/utils/client/api/api-services';
+import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
 
 const EditableField = ({
     label,
     value,
-    onUpdate,
+    // onUpdate,
+    field,
     isLoading,
     handleLoadingChange
 }: {
     label: string;
     value: string;
     isLoading: boolean;
-    onUpdate: (value: string) => void;
+    field: "title" | "timeZone" | "username" | "image" | "profession";
+    // onUpdate: (value: string) => void;
     handleLoadingChange: (isLoading: boolean) => void
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value?? '');
     const [hovered, setHovered] = useState(false);
-
+    const dispatch = useAppDispatch();
 
     const handleSave = () => {
         handleLoadingChange(true);
-        onUpdate(tempValue);
+        updateProfileField(field, tempValue);
         setIsEditing(false);
         handleLoadingChange(false);
+        
     };
+
+     // * Update fields
+  const updateProfileField = async (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
+    const responseData = await apiService.put(
+      `/api/auth/status?field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`
+    );
+    if (responseData.success) {
+      dispatch(updateUserInfo({ field: field, updatedValue: value }));
+      ShowToaster(responseData.message, 'success');
+    }
+  };
 
     return (
         <div
@@ -44,7 +62,7 @@ const EditableField = ({
                         label === 'Profession'
                             ? <Profession OnChange={(value) => setTempValue(value)} />
                             : label === 'Timezone'
-                                ? <TimeZone OnChange={onUpdate} />
+                                ? <TimeZone OnChange={(newValue)=> setTempValue(newValue)} />
                                 : <input
                                     id={label}
                                     type="text"

@@ -9,7 +9,7 @@ import { initializeServerSocket } from "@/utils/socket/socketInitialized";
 import { useEffect } from "react";
 
 const useNotificationSocket = () => {
-    const { user, notifications } = useAppSelector((state) => state.userStore);
+    const { user } = useAppSelector((state) => state.userStore);
     const dispatch = useAppDispatch();
 
     useEffect(() => {
@@ -59,7 +59,8 @@ const useNotificationSocket = () => {
                 console.log("🛑 Socket disconnected");
             }
         };
-    }, [dispatch, notifications, user?._id, user?.disabledNotificationUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?._id]);
 
 };
 

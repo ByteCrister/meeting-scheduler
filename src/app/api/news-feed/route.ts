@@ -2,77 +2,108 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/utils/server/getUserFromToken';
 import ConnectDB from '@/config/ConnectDB';
 import UserModel, { IUserFollowInfo } from '@/models/UserModel';
-import SlotModel from '@/models/SlotModel';
-import { feedMapSlotType } from '@/types/server-types';
-import { formatUTCDateToOffset } from '@/utils/client/date-convertions/formatUTCDateToOffset';
-import { getConvertedTime } from '@/utils/client/date-convertions/convertDateTime';
+import SlotModel, { ISlot } from '@/models/SlotModel';
+
 
 export const GET = async (req: NextRequest) => {
-    
     try {
         await ConnectDB();
+
         const userId = await getUserIdFromRequest(req);
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
         const page = parseInt(req.nextUrl.searchParams.get('page') || '1', 10);
         const limit = 5;
         const skip = (page - 1) * limit;
+        const searchedPost = req.nextUrl.searchParams.get('meeting-post');
+        console.log(page);
+
+
         const user = await UserModel.findById(userId);
         if (!user) return NextResponse.json([], { status: 200 });
 
-        let query;
-
         const followedIds = user.following.map((f: IUserFollowInfo) => f.userId);
+
+        const baseQuery: {
+            status: ISlot["status"];
+            $expr: { $gt: [string, { $size: string }] };
+            ownerId?: { $in: string[] };
+        } = {
+            status: 'upcoming',
+            $expr: { $gt: ["$guestSize", { $size: "$bookedUsers" }] },
+        };
+
         if (user.following.length > 5) {
-            query = { ownerId: { $in: followedIds }, status: 'upcoming' };
-        } else if (user.following.length > 0) {
-            const extra = await UserModel.find({ profession: user.profession })
-                .sort({ searchScore: -1 })
-                .limit(5 - followedIds.length);
-            const richUserIds = extra.map(u => u._id.toString());
-            query = {
-                ownerId: { $in: [...followedIds, ...richUserIds] },
-                status: 'upcoming'
-            };
+            baseQuery.ownerId = { $in: followedIds };
         } else {
-            const richUsers = await UserModel.find({ profession: user.profession })
+            const fallbackUsers = await UserModel.find({ profession: user.profession })
                 .sort({ searchScore: -1 })
-                .limit(5);
-            const richUserIds = richUsers.map(u => u._id.toString());
-            query = { ownerId: { $in: richUserIds }, status: 'upcoming' };
+                .limit(limit);
+
+            const fallbackIds = fallbackUsers.map(u => u._id.toString());
+            baseQuery.ownerId = {
+                $in: [...followedIds, ...fallbackIds],
+            };
         }
 
-        const slots = await SlotModel.find(query)
+        // Fetch feed slots
+        const slots = await SlotModel.find(baseQuery)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('ownerId', 'username image');
+            .populate('ownerId', 'username image _id timeZone');
 
-        const feedMap: { [slotId: string]: feedMapSlotType } = {};
-        slots.forEach(slot => {
-            feedMap[slot._id.toString()] = {
-                _id: slot._id,
-                title: slot.title,
-                description: slot.description,
-                meetingDate: formatUTCDateToOffset(slot.meetingDate, user.timeZone),
-                createdAt: formatUTCDateToOffset(slot.createdAt, user.timeZone),
-                durationFrom: getConvertedTime(slot.meetingDate, slot.durationFrom, user.timeZone),
-                durationTo: getConvertedTime(slot.meetingDate, slot.durationTo, user.timeZone),
-                guestSize: slot.guestSize,
-                tags: slot.tags,
-                bookedUsers: slot.bookedUsers,
-                owner: {
-                    username: slot.ownerId.username,
-                    image: slot.ownerId.image,
-                },
-                isBooking: false,
-            };
-        });
+        // If searchedPost exists...
+        if (page === 1 && searchedPost) {
+            const index = slots.findIndex(slot => slot._id.toString() === searchedPost);
 
-        return NextResponse.json({ success: true, data: feedMap }, { status: 200 });
+            // If found, move to top
+            if (index > 0) {
+                const [foundSlot] = slots.splice(index, 1);
+                slots.unshift(foundSlot);
+            }
+
+            // If NOT found, fetch separately and prepend
+            else if (index === -1) {
+                const extraSlot = await SlotModel.findOne({
+                    _id: searchedPost,
+                    status: 'upcoming',
+                    $expr: { $gt: ["$guestSize", { $size: "$bookedUsers" }] },
+                }).populate('ownerId', 'username image _id timeZone');
+
+                if (extraSlot) {
+                    slots.unshift(extraSlot);
+                }
+            }
+        }
+
+        // Map to feed format
+        const feedArray = slots.map(slot => ({
+            _id: slot._id,
+            title: slot.title,
+            description: slot.description,
+            meetingDate: slot.meetingDate,
+            createdAt: slot.createdAt,
+            durationFrom: slot.durationFrom,
+            durationTo: slot.durationTo,
+            guestSize: slot.guestSize,
+            tags: slot.tags,
+            bookedUsers: slot.bookedUsers,
+            owner: {
+                owner_id: slot.ownerId._id,
+                username: slot.ownerId.username,
+                image: slot.ownerId.image,
+                timeZone: slot.ownerId.timeZone
+            },
+            isBooking: false,
+        }));
+
+        return NextResponse.json({ success: true, data: feedArray }, { status: 200 });
+
     } catch (err) {
-        console.log(err);
+        console.error('Feed Fetch Error:', err);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 };

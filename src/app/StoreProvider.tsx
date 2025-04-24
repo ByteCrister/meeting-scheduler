@@ -9,7 +9,6 @@ import AlertLogout from "@/components/global-ui/dialoges/AlertLogout";
 import AlertDialogComponent from "@/components/global-ui/dialoges/AlertDialogComponent";
 import SlotDropDialog from "@/components/global-ui/dialoges/SlotDropDialog";
 import NotifyChangeDialog from "@/components/global-ui/dialoges/NotifyChangeDialog";
-import NotificationSocketProvider from "@/utils/socket/NotificationSocketProvider";
 import { setUser } from "@/lib/features/users/userSlice";
 import { Users } from "@/types/client-types";
 import { getUserStatus } from "@/utils/client/getUserStatus";
@@ -63,7 +62,6 @@ export default function StoreProvider({
           <BookedSlotDialog />
           <AlertDialogComponent />
           <AlertDeleteBookedSlot />
-          <NotificationSocketProvider />
         </DashboardLayout>
         // ! else : wrap component for unauthorized user
         : <>

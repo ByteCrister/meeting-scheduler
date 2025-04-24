@@ -1,7 +1,6 @@
 import { newsFeedSliceInitialTypes, NewsFeedTypes } from "@/types/client-types";
 import { NotificationType } from "@/utils/constants";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { isEqual } from "lodash";
 
 const initialNewsFeed: newsFeedSliceInitialTypes = {
     newsFeeds: {}
@@ -12,10 +11,23 @@ const newsFeedSlice = createSlice({
     initialState: initialNewsFeed,
     reducers: {
         addNewsFeeds: (state, action: PayloadAction<{ [key: string]: NewsFeedTypes }>) => {
-            if (!isEqual(state.newsFeeds, action.payload)) {
-                state.newsFeeds = {...action.payload};
+            const newFeeds = action.payload;
+            let hasNew = false;
+
+            Object.keys(newFeeds).forEach(key => {
+                if (!state.newsFeeds[key]) {
+                    hasNew = true;
+                    state.newsFeeds[key] = newFeeds[key];
+                }
+            });
+
+            // Only mark new state if something was truly added
+            if (!hasNew) {
+                // Optional: trigger a toast or set `hasMore` false at fetch level
+                console.log("No new feeds added");
             }
         },
+
         updateSlotBookedUsers: (state, action: PayloadAction<{ slotId: string, userId: string, type: (NotificationType.SLOT_UNBOOKED | NotificationType.SLOT_BOOKED) }>) => {
             const slot = state.newsFeeds[action.payload.slotId];
             if (slot) {

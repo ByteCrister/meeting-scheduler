@@ -1,79 +1,112 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-
+import { useEffect, useRef, useState } from 'react';
 import MeetingCard from './MeetingCard';
+import MeetingCardSkeleton from './MeetingCardSkeleton';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { addNewsFeeds, removeNewsFeedSlot, toggleIsSlotBooking } from '@/lib/features/news-feed/newsFeedSlice';
+import { APIBookMeeting } from '@/utils/client/api/api-book-meetings';
 import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
 import apiService from '@/utils/client/api/api-services';
-import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
-import MeetingCardSkeleton from './MeetingCardSkeleton';
-import { APIBookMeeting } from '@/utils/client/api/api-book-meetings';
+import { useSearchParams } from 'next/navigation';
+import { NewsFeedTypes } from '@/types/client-types';
 
+interface NewsFeedResponse {
+    success: boolean;
+    data: { [key: string]: NewsFeedTypes };
+    message?: string;
+}
 
 export default function MeetingPostFeed() {
+    const searchParams = useSearchParams();
+    const searchedMeetingPost = searchParams?.get('meeting-post') || '';
 
-    const newsFeeds = useAppSelector(state => state.newFeedStore.newsFeeds);
     const dispatch = useAppDispatch();
+    const newsFeeds = useAppSelector((state) => state.newFeedStore.newsFeeds);
+    const feedsList = Object.values(newsFeeds) as NewsFeedTypes[];
 
+    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const [pageLoading, setPageLoading] = useState(false);
-    const pageRef = useRef(1);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchLoadingRef = useRef(false);
-    const hasMoreRef = useRef(true);
+    const observer = useRef<IntersectionObserver | null>(null);
+    const lastElementRef = useRef<HTMLDivElement>(null);
 
+    const fetchFeeds = async () => {
+        if (loading || !hasMore) return;
 
-    // ? GET meeting slot feeds
-    const fetchFeeds = useCallback(async () => {
-        if (fetchLoadingRef.current || !hasMoreRef.current) return;
+        setLoading(true);
+        setError(null);
 
-        fetchLoadingRef.current = true;
-        setPageLoading(true);
+        try {
+            const response = await apiService.get(`/api/news-feed?page=${page}&meeting-post=${searchedMeetingPost}`);
+            const res = response as NewsFeedResponse;
 
-        const responseData = await apiService.get(`/api/news-feed?page=${pageRef.current}`);
+            if (res.success) {
+                const feedList = Object.values(res.data || {});
+                const feedsToAdd = feedList.reduce<{ [key: string]: NewsFeedTypes }>((acc, feed) => {
+                    acc[feed._id] = feed;
+                    return acc;
+                }, {});
 
-        if (responseData.success) {
-            hasMoreRef.current = false;
-            if (Object.values(responseData.data).length === 0) setHasMore(false);
-            dispatch(addNewsFeeds(responseData.data));
+                dispatch(addNewsFeeds(feedsToAdd));
+
+                if (feedList.length < 5) {
+                    setHasMore(false);
+                } else {
+                    setPage((prev) => prev + 1);
+                }
+            } else {
+                setHasMore(false);
+                setError('Failed to fetch feeds');
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+            setHasMore(false);
+            setError('An error occurred while fetching feeds');
+        } finally {
+            setLoading(false);
         }
-
-        fetchLoadingRef.current = false;
-        setPageLoading(false);
-    }, [dispatch]);
-
+    };
 
     useEffect(() => {
         fetchFeeds();
-    }, [fetchFeeds]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchedMeetingPost]);
 
-    const observer = useRef<IntersectionObserver | null>(null);
-    const lastFeedRef = useCallback(
-        (node: HTMLDivElement | null) => {
-            if (fetchLoadingRef.current) return;
-            if (observer.current) observer.current.disconnect();
-            observer.current = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting && hasMoreRef.current) {
+    useEffect(() => {
+        if (observer.current) observer.current.disconnect();
+
+        observer.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !loading) {
                     fetchFeeds();
                 }
-            });
-            if (node) observer.current.observe(node);
-        },
-        [fetchFeeds]
-    );
+            },
+            {
+                rootMargin: '100px',
+            }
+        );
 
-    // ? API user booked a meeting slot
+        if (lastElementRef.current) {
+            observer.current.observe(lastElementRef.current);
+        }
+
+        return () => {
+            if (observer.current) observer.current.disconnect();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [feedsList, hasMore, loading]);
+
     const handleBookSlot = async (slotId: string) => {
-        dispatch(toggleIsSlotBooking({ slotId: slotId, isBooking: true }));
+        dispatch(toggleIsSlotBooking({ slotId, isBooking: true }));
         const responseData = await APIBookMeeting(slotId);
         if (responseData.success) {
             dispatch(removeNewsFeedSlot(slotId));
             ShowToaster(responseData.message, 'success');
-        } else {
-            dispatch(toggleIsSlotBooking({ slotId: slotId, isBooking: false }));
         }
+        dispatch(toggleIsSlotBooking({ slotId, isBooking: false }));
     };
 
     return (
@@ -84,30 +117,29 @@ export default function MeetingPostFeed() {
             </div>
 
             <div className="space-y-4">
-                {newsFeeds
-                    && Object.values(newsFeeds).length !== 0
-                    && Object.values(newsFeeds).map((feed, index) => {
-                        const isLast = Object.values(newsFeeds).length === index + 1;
-                        return (
-                            <div
-                                key={feed._id}
-                                ref={isLast ? lastFeedRef : null}
-                            >
-                                <MeetingCard
-                                    feed={feed}
-                                    handleBookSlot={handleBookSlot}
-                                />
-                            </div>
-                        );
-                    })}
+                {feedsList.map((feed, i) => (
+                    <div key={feed._id} ref={i === feedsList.length - 1 ? lastElementRef : null}>
+                        <MeetingCard
+                            feed={feed}
+                            handleBookSlot={handleBookSlot}
+                            isExpand={i === 0}
+                            meetingPost={searchedMeetingPost}
+                        />
+                    </div>
+                ))}
+                {loading && <MeetingCardSkeleton />}
+                {!hasMore && feedsList.length > 0 && (
+                    <p className="text-center text-gray-400 text-sm">No more feeds to load.</p>
+                )}
+                {!hasMore && feedsList.length === 0 && (
+                    <p className="text-center text-gray-400 text-sm">No feeds available for this category.</p>
+                )}
+                {error && (
+                    <p className="text-center text-red-500 text-sm">
+                        {error} <button onClick={fetchFeeds} className="underline ml-2">Retry</button>
+                    </p>
+                )}
             </div>
-            {pageLoading && <MeetingCardSkeleton />}
-            {fetchLoadingRef.current && <LoadingSpinner />}
-            {!hasMore && (
-                <div className="col-span-full text-center text-gray-500 mt-4">
-                    No more new feed available.
-                </div>
-            )}
         </div>
     );
 }

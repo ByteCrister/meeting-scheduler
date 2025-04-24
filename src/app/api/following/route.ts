@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         const sendNewNotification = {
             type: INotificationType.FOLLOW,
             sender: userId, // Me - started following
-            receiver: targetUser._id, // User whom I followed
+            receiver: targetUser._id, // User whom I started following
             message: `${currentUser.username} started following you.`,
             isRead: false,
             isClicked: false,
@@ -101,6 +101,8 @@ export async function POST(req: NextRequest) {
         };
         const notificationDoc = new NotificationsModel(sendNewNotification);
         const savedNotification = await notificationDoc.save();
+        // ? Incrementing count of new notification by 1+ to the followed person
+        await UserModel.findByIdAndUpdate(targetUser._id, { $inc: { countOfNotifications: 1 } }, { new: true });
 
         // Emit via shared socket instance
         const io = getIOInstance();
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
             senderImage: currentUser?.image,
         };
 
-        // emit notification to the owner's account
+        // emit notification to the followed's account
         const socketId = getUserSocketId(targetUser._id); // Get specific socket
         if (socketId) {
             io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {

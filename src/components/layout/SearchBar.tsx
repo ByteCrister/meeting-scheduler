@@ -2,12 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import apiService from '@/utils/client/api/api-services';
 import { debounce, isEqual } from 'lodash';
 import { useRouter } from 'next/navigation';
+import { APIGetSearchSuggestion, APIUpdateUsersSearchScore } from '@/utils/client/api/api-search';
 
 interface SearchResult {
   _id: string;
+  field: 'user' | 'slot';
   name: string;
   matchedString: string;
   href: string;
@@ -20,21 +21,31 @@ const SearchBar = () => {
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   const debouncedFetchRef = useRef(
     debounce(async (query: string) => {
       setLoading(true);
-      const responseData = await apiService.get(`/api/searching?q=${query}`);
+      const responseData = await APIGetSearchSuggestion(query);
       if (responseData.success && !isEqual(responseData.data, suggestions)) {
         setSuggestions(responseData.data);
       } else if (!responseData.success) {
         setSuggestions([]);
       }
       setLoading(false);
-    }, 300)
+    }, 400)
   );
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
       // eslint-disable-next-line react-hooks/exhaustive-deps
       debouncedFetchRef.current.cancel();
     };
@@ -52,28 +63,41 @@ const SearchBar = () => {
     }
   };
 
-  const handleSuggestionClick = (href: string) => {
+  const handleSuggestionClick = async (href: string, userId: string, field: 'user' | 'slot') => {
+    if (field === 'user') {
+      await APIUpdateUsersSearchScore(userId);
+    }
     setShowSuggestions(false);
     router.push(href);
   };
 
   return (
-    <div className="relative w-full max-w-md mx-auto">
+    <div className="relative w-full max-w-md mx-auto" ref={wrapperRef}>
       <div className="relative">
         <input
           type="text"
           value={searchQuery}
           onChange={handleSearch}
-          onFocus={() => setShowSuggestions(true)}
+          onFocus={() => {
+            if (searchQuery.trim()) {
+              setShowSuggestions(true);
+            }
+          }}
+          onBlur={(e) => {
+            // Only close if the next focused element is NOT inside the wrapper
+            if (!wrapperRef.current?.contains(e.relatedTarget as Node)) {
+              setShowSuggestions(false);
+            }
+          }}
           placeholder="Search meetings, users, or topics..."
           className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 placeholder-gray-400 shadow-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none"
         />
+
         <div className="absolute inset-y-0 left-4 flex items-center text-gray-400">
           <Search className="w-5 h-5" />
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
       {showSuggestions && searchQuery && (
         <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-fade-in">
           <div className="divide-y divide-gray-100 max-h-64 overflow-auto">
@@ -87,7 +111,7 @@ const SearchBar = () => {
               suggestions.map((suggestion) => (
                 <button
                   key={suggestion._id}
-                  onClick={() => handleSuggestionClick(suggestion.href)}
+                  onClick={() => handleSuggestionClick(suggestion.href, suggestion._id, suggestion.field)}
                   className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
                 >
                   <div className="font-medium">{suggestion.name}</div>

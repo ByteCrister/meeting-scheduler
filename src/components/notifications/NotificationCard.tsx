@@ -27,7 +27,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         const RoutingPath = (type === NotificationType.FOLLOW || type === NotificationType.SLOT_BOOKED)
             ? `/searched-profile?user=${notification.sender}`
             : type === NotificationType.SLOT_CREATED
-                ? `/meeting-post-feed?post=${slot_id}`
+                ? `/meeting-post-feed?meeting-post=${slot_id}`
                 : NotificationType.SLOT_UPDATED
                     ? `/booked-meetings?meeting-slot=${notification._id}`
                     : type === NotificationType.SLOT_DELETED
