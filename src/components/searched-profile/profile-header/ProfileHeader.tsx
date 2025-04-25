@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Clock, Briefcase } from "lucide-react";
-import { Button } from "@/components/ui/button"; // Assuming you have a Button component
+import { Button } from "@/components/ui/button";
 import { SearchedUserProfile } from '../profile/SearchedProfile';
 import LoadingSpinner from '@/components/global-ui/ui-component/LoadingSpinner';
 import { followFriend, unfollowFriend } from '@/utils/client/api/api-friendZone';
@@ -16,10 +16,11 @@ export const ProfileHeader = ({ profile }: { profile: SearchedUserProfile }) => 
 
   const usernameFallback = profile.username ? profile.username.slice(0, 2).toUpperCase() : "??";
 
+  // ? user profile follow/unfollow handler
   const handleFollowToggle = async () => {
     setIsLoading(true);
-    const responseData = profile.isFollowing ? await unfollowFriend(profile._id) : await followFriend(profile._id);
-    console.log(responseData);
+    // ? If you follow searched profile-user then unfollowFriend() executes else you click on Follow and followFriend() called
+    const responseData = isFollowing ? await unfollowFriend(profile._id) : await followFriend(profile._id);
     if (responseData.success) {
       setIsFollowing(prev => !prev);
       ShowToaster(responseData.message, 'success');

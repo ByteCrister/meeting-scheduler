@@ -8,9 +8,10 @@ import { FriendTypes } from '../followers/Followers';
 import { useAppDispatch } from '@/lib/hooks';
 import { setFriendDropDialog } from '@/lib/features/component-state/componentSlice';
 import { useCallback } from 'react';
-import { addNewFriend, toggleIsBtnLoading } from '@/lib/features/friend-zone/friendZoneSlice';
+import { toggleIsBtnLoading, toggleIsRemoved } from '@/lib/features/friend-zone/friendZoneSlice';
 import { followFriend } from '@/utils/client/api/api-friendZone';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
+import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
 
 const FollowingCard = ({ following }: { following: FriendTypes; }) => {
     const dispatch = useAppDispatch();
@@ -19,7 +20,8 @@ const FollowingCard = ({ following }: { following: FriendTypes; }) => {
         dispatch(toggleIsBtnLoading({ id: following.id, isLoading: true }));
         const responseData = await followFriend(following.id);
         if (responseData.success) {
-            dispatch(addNewFriend(responseData.data));
+            dispatch(toggleIsRemoved({ id: following.id, isRemoved: false }));
+            ShowToaster(responseData.message, 'success');
         }
         dispatch(toggleIsBtnLoading({ id: following.id, isLoading: false }));
     }, [dispatch, following.id]);

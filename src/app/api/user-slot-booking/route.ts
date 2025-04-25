@@ -7,9 +7,8 @@ import SlotModel, { IRegisterStatus } from "@/models/SlotModel";
 import UserModel, { IUsers } from "@/models/UserModel";
 import { formatUTCDateToOffset } from "@/utils/client/date-convertions/formatUTCDateToOffset";
 import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
-import { getIOInstance } from "@/utils/socket/setIOInstance";
-import { getUserSocketId } from "@/utils/socket/socketUserMap";
 import { SocketTriggerTypes } from "@/utils/constants";
+import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
 
 // ? Get request for booked page fetchData API
 export const GET = async (req: NextRequest) => {
@@ -67,23 +66,23 @@ export const GET = async (req: NextRequest) => {
         console.log('[GET USER SLOT BOOKING ERROR]', error);
         return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
     }
-}
+};
 
 // ? Post request to booked a meeting slot
 export async function POST(req: NextRequest,) {
 
     try {
         await ConnectDB();
-        // 1: Get user id
+
         const userId = await getUserIdFromRequest(req);
         if (!userId) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        // 2: Get slot id
+        // Get slot id
         const { slotId } = await req.json();
 
-        // 3: Get the slot
+        //  Get the slot
         const slot = await SlotModel.findById(slotId);
         if (!slot) return NextResponse.json({ message: "Slot not found" }, { status: 404 });
 
@@ -97,11 +96,10 @@ export async function POST(req: NextRequest,) {
             return NextResponse.json({ message: "Already booked!" }, { status: 400 });
         }
 
-
-        // 4: Getting user for image
+        //  Getting user for image
         const user = await UserModel.findById(userId).select("image");
 
-        // 5: Update user model
+        // Update user model
         await UserModel.findByIdAndUpdate(userId, {
             $push: {
                 bookedSlots: {
@@ -112,12 +110,12 @@ export async function POST(req: NextRequest,) {
             },
         });
 
-        // 6: Update slot with this user
+        // Update slot with this user
         slot.bookedUsers.push(userId);
         await slot.save();
 
         // ! Notification block
-        // 7: Notify the owner of this slot
+        // Notify the owner of this slot
         const now = new Date();
         const sendNewNotification = {
             type: INotificationType.SLOT_BOOKED,
@@ -134,29 +132,23 @@ export async function POST(req: NextRequest,) {
         // ? Incrementing count of new notification by 1+ for the meeting slot owner
         await UserModel.findByIdAndUpdate(slot.ownerId, { $inc: { countOfNotifications: 1 } }, { new: true });
 
-        // Emit via shared socket instance
-        const io = getIOInstance();
+        // emit notification to the slot owner's account
+        triggerSocketEvent({
+            userId: slot.ownerId.toString(),
+            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+            notificationData: {
+                ...sendNewNotification,
+                _id: savedNotification._id,
+                senderImage: user?.image,
+            },
+        });
 
-        // Emit a notification to the owner of the slot
-        const notificationData = {
-            ...sendNewNotification,
-            _id: savedNotification._id,
-            senderImage: user?.image,
-        };
 
-        // 8: emit notification to the slot owner's account
-        const socketId = getUserSocketId(slot.ownerId); // Get specific socket
-        if (socketId) {
-            io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
-                userId: slot.ownerId,
-                notificationData
-            });
-        }
-
-        // 9: Notify all followers of the slot owner
-        // ? This will trigger in frontend & change the slot booked guest count, to show the real-time guest booking number 
+        // Notify updated guest count to the all followers of the slot owner 
+        // ? This will trigger in frontend & change the slot booked guest count, to show the current booked numbers in real-time 
         const slotOwner = await UserModel.findById(slot.ownerId).select("followers");
 
+        // ? Only executes if the meeting slot owner has any followers.
         if (slotOwner?.followers?.length) {
             const followersToNotify = slotOwner.followers;
 
@@ -167,10 +159,11 @@ export async function POST(req: NextRequest,) {
             };
 
             followersToNotify.forEach((followerId: string) => {
-                const followerSocketId = getUserSocketId(followerId.toString());
-                if (followerSocketId) {
-                    io.to(followerSocketId).emit(SocketTriggerTypes.USER_SLOT_BOOKED, userSlotBookedData);
-                }
+                triggerSocketEvent({
+                    userId: followerId.toString(),
+                    type: SocketTriggerTypes.USER_SLOT_BOOKED,
+                    notificationData: userSlotBookedData
+                })
             });
         }
 
@@ -189,19 +182,18 @@ export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
 
-        // 1: Get user id
         const userId = await getUserIdFromRequest(req);
         if (!userId) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        // 2: Get slot id
+        // Get slot id
         const { slotId } = await req.json();
         if (!slotId) {
             return NextResponse.json({ success: false, message: "slotId is required" }, { status: 400 });
         }
 
-        // 3: Update users bookedSlot array, remove the slotId
+        //  Update users bookedSlot array, remove the slotId
         const updatedUser = await UserModel.findOneAndUpdate(
             { _id: userId },
             { $pull: { bookedSlots: { slotId } } },
@@ -212,7 +204,7 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
         }
 
-        // 4: Update bookedUsers from slot owners, remove userId
+        // Update bookedUsers from slot owners, remove userId
         const slot = await SlotModel.findOneAndUpdate(
             { _id: slotId },
             { $pull: { bookedUsers: { userId } } },
@@ -223,13 +215,12 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ success: false, message: "Slot not found. Slot may be removed by the owner." }, { status: 404 });
         }
 
-        // 5: Notify other users who follow the slot owner, that one guest is removed **Only if the meeting is still upcoming
+        // !  Notify other users who follow the slot owner, that one guest is removed **Only if the meeting is still upcoming
         // ? This will trigger in frontend & change the slot booked guest count, to show the real-time guest booking number 
         if (slot.status !== IRegisterStatus.Upcoming) {
-            // Notify all followers of the slot owner
+            // * Notify the booked user count number to all the followers of the slot owner
             const slotOwner = await UserModel.findById(slot.ownerId).select("followers");
-            // Emit via shared socket instance
-            const io = getIOInstance();
+
             if (slotOwner?.followers?.length) {
                 const followersToNotify = slotOwner.followers;
 
@@ -240,10 +231,12 @@ export async function DELETE(req: NextRequest) {
                 };
 
                 followersToNotify.forEach((followerId: string) => {
-                    const followerSocketId = getUserSocketId(followerId.toString());
-                    if (followerSocketId) {
-                        io.to(followerSocketId).emit(SocketTriggerTypes.USER_SLOT_UNBOOKED, userSlotBookedData);
-                    }
+                    // ! Emit a notification to the follower of the slot owner. This emit is for showing the updated number of booked members in real-time       
+                    triggerSocketEvent({
+                        userId: followerId.toString(),
+                        type: SocketTriggerTypes.USER_SLOT_UNBOOKED,
+                        notificationData: userSlotBookedData,
+                    });
                 });
             }
         }
@@ -253,4 +246,4 @@ export async function DELETE(req: NextRequest) {
         console.error("[DELETE_BOOKED_SLOT_ERROR]", error);
         return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
     }
-}
+};

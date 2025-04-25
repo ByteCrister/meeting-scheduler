@@ -8,6 +8,7 @@ import {
     registerUserSocket,
     removeUserSocket,
 } from "@/utils/socket/socketUserMap";
+import { setIOInstance } from "@/utils/socket/setIOInstance";
 
 // Disable body parser for socket handling
 export const config = {
@@ -15,37 +16,38 @@ export const config = {
         bodyParser: false,
     },
 };
+let socketServerInitialized = false;
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
     // Access the extended `http.Server` which includes `io`
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const httpServer = (res.socket as unknown as { server: any }).server;
 
-    if (httpServer && !httpServer.io) {
+    if (!socketServerInitialized && httpServer && !httpServer.io) {
         console.log("Initializing new Socket.IO server...");
 
         // Initialize the Socket.IO server
         const io = new ServerIO(httpServer, {
-            path: process.env.SOCKET_PATH || "/api/socket",
+            path: process.env.SOCKET_PATH!,
             cors: {
-                origin: process.env.SOCKET_SERVER_URL || "http://localhost:3000", // Adjust for your frontend URL
+                origin: process.env.SOCKET_SERVER_URL!,
                 methods: ["GET", "POST"],
                 allowedHeaders: ["Content-Type", "Authorization"],
                 credentials: true, // Allow cookies to be sent with requests
             },
         });
 
-
-
         // Attach the Socket.IO instance to the server object
         httpServer.io = io;
+        setIOInstance(io);  // Set the global Socket.IO instance
+        socketServerInitialized = true;
 
         // Socket.IO connection handling
         io.on("connection", (socket) => {
             console.log("->> Socket connected:", socket.id);
 
             socket.on(SocketTriggerTypes.REGISTER_USER, (data) => {
-                console.log("User registered:", data.userId);
+                console.log("-------------------------- User registered: ", data.userId + ' -----------------------------');
                 registerUserSocket(data.userId, socket.id);
             });
 

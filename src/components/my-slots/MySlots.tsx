@@ -10,7 +10,6 @@ import PaginateButtons from '../global-ui/ui-component/PaginateButtons';
 import SlotCard from './SlotCard';
 import SearchSlots from './SearchSlots';
 import { toggleSlotDialog } from '@/lib/features/component-state/componentSlice';
-import { isEqual } from 'lodash';
 import { useSearchParams } from 'next/navigation';
 
 
@@ -23,7 +22,7 @@ export default function MySlots() {
   const searchParams = useSearchParams();
   const searchedMeetingSlot = searchParams?.get('slot') || '';
 
-  const { Store, tempStore, currentSlotPage } = useAppSelector(state => state.slotStore);
+  const { tempStore, currentSlotPage } = useAppSelector(state => state.slotStore);
   const dispatch = useAppDispatch();
 
   const [isFetching, setIsFetching] = useState<boolean>(false);
@@ -34,36 +33,43 @@ export default function MySlots() {
 
 
   useEffect(() => {
-    if (!isFetching) {
-      const fetchData = async () => {
-        setIsFetching(true);
-        const responseData = await apiService.get(`/api/user-slot-register`);
-
-        if (responseData.success && Array.isArray(responseData.data)) {
-          const data = [...responseData.data];
-
-          if (searchedMeetingSlot) {
-            const searchedIndex = data.findIndex(item => item._id === searchedMeetingSlot);
-            if (searchedIndex !== -1) {
-              const [searchedSlot] = data.splice(searchedIndex, 1);
-              data.unshift(searchedSlot);
-            }
-          }
-
-          if (!isEqual(data, Store)) {
-            dispatch(addSlots(data));
-            dispatch(setCurrentPage(1));
+    const fetchData = async () => {
+      setIsFetching(true);
+      const responseData = await apiService.get(`/api/user-slot-register`);
+  
+      if (responseData.success && Array.isArray(responseData.data)) {
+        const data = [...responseData.data];
+  
+        if (searchedMeetingSlot) {
+          const searchedIndex = data.findIndex(item => item._id === searchedMeetingSlot);
+          if (searchedIndex > -1) {
+            const [searchedItem] = data.splice(searchedIndex, 1);
+            data.unshift(searchedItem);
           }
         }
-
-        setIsFetching(false);
-      };
-
-      fetchData();
+  
+        dispatch(addSlots(data)); // Let your reducer handle comparison if needed
+        dispatch(setCurrentPage(1));
+      }
+      setIsFetching(false);
+    };
+  
+    fetchData();
+  }, [dispatch, searchedMeetingSlot]);
+  
+  useEffect(() => {
+    if (!searchedMeetingSlot || tempStore.length === 0) return;
+  
+    const index = tempStore.findIndex(slot => slot._id === searchedMeetingSlot);
+    if (index > 0) {
+      const newSlots = [...tempStore];
+      const [found] = newSlots.splice(index, 1);
+      newSlots.unshift(found);
+      dispatch(sortTempSlots(newSlots));
+      dispatch(setCurrentPage(1)); // Optional: reset page
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch]);
-
+  }, [searchedMeetingSlot, tempStore, dispatch]);
+  
 
 
   const handleSort = useCallback((field: SortFieldButtons) => {

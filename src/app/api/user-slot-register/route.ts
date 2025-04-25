@@ -1,15 +1,13 @@
 import ConnectDB from '@/config/ConnectDB';
-import { getIOInstance } from '@/utils/socket/setIOInstance';
 import NotificationsModel, { INotificationType } from '@/models/NotificationsModel';
 import SlotModel, { ISlot } from '@/models/SlotModel';
 import UserModel from '@/models/UserModel';
 import { RegisterSlotStatus } from '@/types/client-types';
 import { SocketTriggerTypes } from '@/utils/constants';
 import { getUserIdFromRequest } from '@/utils/server/getUserFromToken';
-import { getUserSocketId } from '@/utils/socket/socketUserMap';
 import { NextRequest, NextResponse } from 'next/server';
+import { triggerSocketEvent } from '@/utils/socket/triggerSocketEvent';
 
-// ? Get API from Slots.tsx
 export async function GET(req: NextRequest) {
     try {
         await ConnectDB();
@@ -49,9 +47,9 @@ export async function GET(req: NextRequest) {
         console.log(error);
         return NextResponse.json({ message: 'Server error' }, { status: 500 });
     }
-}
+};
 
-// ? Post API to create or update any slot
+// ? Post for create or update any slot
 export async function POST(req: NextRequest) {
     try {
         await ConnectDB();
@@ -72,21 +70,20 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        const io = getIOInstance();
-
+        // ? Send notification to the followers of creating a new meeting slot. 
         if (type === "create") {
-            // 1. Create new slot
+            // Create new slot
             const newSlot = await SlotModel.create({
                 ...data,
                 ownerId: userId,
             });
 
-            // 2. Update user's registeredSlots
+            // Update user's registeredSlots
             await UserModel.findByIdAndUpdate(userId, {
                 $push: { registeredSlots: newSlot._id },
             });
 
-            // 3. Notify followers
+            // Notify followers
             const user = await UserModel.findById(userId).select("followers image");
             const now = new Date();
             const baseNotification = {
@@ -99,27 +96,26 @@ export async function POST(req: NextRequest) {
                 expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
-            if (user?.followers?.length && io) {
+            // ? Send notification to the followers.
+            if (user?.followers?.length) {
                 await Promise.all(
                     user.followers.map(async (followerId: string) => {
                         const notification = { ...baseNotification, receiver: followerId };
                         const notificationDoc = new NotificationsModel(notification);
                         const saved = await notificationDoc.save();
 
-                        // ? Incrementing count of new notification by 1+ for each followers
+                        // ? Incrementing count of new notification by +1 for each followers
                         await UserModel.findByIdAndUpdate(followerId, { $inc: { countOfNotifications: 1 } }, { new: true });
-
-                        const socketId = getUserSocketId(followerId);
-                        if (socketId) {
-                            io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
-                                userId: followerId,
-                                notificationData: {
-                                    ...notification,
-                                    _id: saved._id,
-                                    senderImage: user.image,
-                                },
-                            });
-                        }
+                        // ! Emit a notification to the followers about the meeting slot      
+                        triggerSocketEvent({
+                            userId: followerId.toString(),
+                            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+                            notificationData: {
+                                ...notification,
+                                _id: saved._id,
+                                image: user.image,
+                            },
+                        });
                     })
                 );
             }
@@ -130,6 +126,7 @@ export async function POST(req: NextRequest) {
                 slot: newSlot,
             });
 
+            // ?  Send update notification of meeting slot to the user's who booked the meeting
         } else if (type === "update") {
 
             const existingSlot = await SlotModel.findOne({ _id: data._id, ownerId: userId });
@@ -153,7 +150,8 @@ export async function POST(req: NextRequest) {
                 expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
-            if (updatedSlot?.bookedUsers?.length && io) {
+            // ? Send notifications to the booked users
+            if (updatedSlot?.bookedUsers?.length) {
                 await Promise.all(
                     updatedSlot.bookedUsers.map(async (bookedUserId: string) => {
                         const notification = { ...baseNotification, receiver: bookedUserId };
@@ -162,17 +160,16 @@ export async function POST(req: NextRequest) {
                         // ? Incrementing count of new notification by 1+ for each user's who booked the meeting slot
                         await UserModel.findByIdAndUpdate(bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true });
 
-                        const socketId = getUserSocketId(bookedUserId);
-                        if (socketId) {
-                            io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
-                                userId: bookedUserId,
-                                notificationData: {
-                                    ...notification,
-                                    _id: saved._id,
-                                    senderImage: user?.image,
-                                },
-                            });
-                        }
+                        // ! Emit a notification to the followers about the meeting slot      
+                        triggerSocketEvent({
+                            userId: bookedUserId.toString(),
+                            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+                            notificationData: {
+                                ...notification,
+                                _id: saved._id,
+                                image: user?.image,
+                            },
+                        });
                     })
                 );
             }
@@ -191,9 +188,9 @@ export async function POST(req: NextRequest) {
         console.log("[Slot Create/Update Error]", error);
         return NextResponse.json({ message: "Server error" }, { status: 500 });
     }
-}
+};
 
-// ? Delete API
+// ? Delete registered meeting slot 
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
@@ -218,23 +215,30 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ message: "Forbidden" }, { status: 403 });
         }
 
-        // Delete slot
+        // * Delete slot
         await SlotModel.findByIdAndDelete(slotId);
 
-        // Update user's registeredSlots
+        // * Update owners's registeredSlots
         await UserModel.updateOne(
             { _id: userId },
             { $pull: { registeredSlots: slotId } }
         );
 
-        // ! Notification block
-        if (slot.status === RegisterSlotStatus.Upcoming) { // * (Condition) - notify booked users only if the meeting slot delete before meeting starts 
-            // 1. Notify "CANCEL message" to the user's who booked this meeting slot 
+        // * Remove the deleted slot from all users' bookedSlots
+        await UserModel.updateMany(
+            { 'bookedSlots.slotId': slotId },
+            { $pull: { bookedSlots: { slotId: slotId } } }
+        );
+
+        // ? If meeting status is upcoming, that means the meeting is still valid and have to send notification to the user's who booked this meeting slot.
+        // * (Condition) - will true only if delete API request hit before meeting starts
+        if (slot.status === RegisterSlotStatus.Upcoming) {
+            // * Notify "CANCEL message" to the user's who booked this meeting slot 
             const now = new Date();
             const sendNewNotification = {
                 type: INotificationType.SLOT_DELETED,
                 sender: userId, // Me - booked a meeting slot
-                // receiver: slot.ownerId, // User who booked this meeting slot, will be added on the loop
+                receiver: slot.ownerId, // The user who booked this meeting slot, will be the receiver of notification
                 message: `Meeting of ${slot.title} is cancelled.`,
                 isRead: false,
                 isClicked: false,
@@ -242,40 +246,36 @@ export async function DELETE(req: NextRequest) {
                 expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
             };
 
-            // Emit meeting cancel notification to the user's who booked this meeting slot.
-            const io = getIOInstance();
-            if (slot.bookedUsers.length && io) {
+            // * Executes only if anyone booked this meeting 
+            if (slot.bookedUsers.length) {
                 await Promise.all(
                     slot.bookedUsers.map(async (bookedUserId: string) => {
+                        // ! Notification block
                         const notificationData = { ...sendNewNotification, receiver: bookedUserId };
                         const notificationDoc = new NotificationsModel(notificationData);
                         const savedNotification = await notificationDoc.save();
 
-                        // ? Incrementing count of new notification by 1+ for each user's who booked the meeting slot
-                        await UserModel.findByIdAndUpdate( bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true } );
+                        // ? Incrementing count of new notification by +1 for each user's who booked this meeting
+                        await UserModel.findByIdAndUpdate(bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true });
 
-                        const socketId = getUserSocketId(bookedUserId);
-                        if (socketId) {
-                            io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
-                                userId: bookedUserId,
-                                notificationData: {
-                                    ...sendNewNotification,
-                                    _id: savedNotification._id,
-                                    senderImage: user?.image,
-                                },
-                            });
-                        } else {
-                            console.log(`User ${bookedUserId} is not currently connected.`);
-                        }
+                        // ! Emit a notification to the users who have been booked this meeting slot       
+                        triggerSocketEvent({
+                            userId: bookedUserId.toString(),
+                            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+                            notificationData: {
+                                ...sendNewNotification,
+                                _id: savedNotification._id,
+                                image: user?.image,
+                            },
+                        });
                     })
                 );
             }
-        }
-
+        };
 
         return NextResponse.json({ message: "Slot deleted successfully", success: true }, { status: 200 });
     } catch (error) {
         console.error("Delete Slot Error:", error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
-}
+};

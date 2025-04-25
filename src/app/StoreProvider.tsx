@@ -15,6 +15,7 @@ import { getUserStatus } from "@/utils/client/getUserStatus";
 import MeetingDialog from "@/components/global-ui/dialoges/meeting-dialog/MeetingDialog";
 import { BookedSlotDialog } from "@/components/booked-meetings/BookedSlotDialog";
 import { AlertDeleteBookedSlot } from "@/components/booked-meetings/AlertDeleteBookedSlot";
+import { Toaster } from "sonner";
 
 
 export default function StoreProvider({
@@ -55,6 +56,7 @@ export default function StoreProvider({
       : state.user
         ? <DashboardLayout>
           {children}
+          <Toaster richColors position="bottom-right" />
           <AlertLogout />
           <MeetingDialog />
           <SlotDropDialog />

@@ -52,9 +52,14 @@ export const userSlice = createSlice({
                 state.notifications = state.notifications?.filter((item) => item._id !== action.payload);
             }
         },
-        updateUserNotificationCount: (state, action: PayloadAction<number>) => {
+        incrementNotificationCount: (state) => {
             if (state.user) {
-                state.user.countOfNotifications = action.payload;
+                state.user.countOfNotifications += 1;
+            }
+        },
+        resetCountOfNotifications: (state) => {
+            if (state.user) {
+                state.user.countOfNotifications = 0;
             }
         },
         // ! ----------------------- end ------------------------
@@ -94,7 +99,8 @@ export const {
     addNotifications,
     addSingleNotification,
     updateNotification,
-    updateUserNotificationCount,
+    incrementNotificationCount,
+    resetCountOfNotifications,
     deleteNotification,
     addActivities,
     addSingleActivity,

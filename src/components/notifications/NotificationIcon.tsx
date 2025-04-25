@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { ApiNotificationTypes } from "@/utils/constants";
-import { addNotifications, updateUserNotificationCount } from "@/lib/features/users/userSlice";
+import { addNotifications, resetCountOfNotifications } from "@/lib/features/users/userSlice";
 import ApiStatusUpdate from "@/utils/client/api/api-status-update";
 import NotificationCard from "./NotificationCard";
 import { APIgetAllInitialNotifications } from "@/utils/client/api/api-notifications";
@@ -37,7 +37,7 @@ const NotificationIcon = () => {
       const responseData = await ApiStatusUpdate(ApiNotificationTypes.REFRESH_NOTIFICATION);
       if (responseData.success) {
         console.log(responseData.data);
-        dispatch(updateUserNotificationCount(0));
+        dispatch(resetCountOfNotifications());
       }
     }
   };

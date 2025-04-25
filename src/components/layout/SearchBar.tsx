@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { debounce, isEqual } from 'lodash';
 import { useRouter } from 'next/navigation';
 import { APIGetSearchSuggestion, APIUpdateUsersSearchScore } from '@/utils/client/api/api-search';
+import SearchLoading from './SearchLoading';
 
 interface SearchResult {
   _id: string;
@@ -63,16 +64,15 @@ const SearchBar = () => {
     }
   };
 
-  const handleSuggestionClick = async (href: string, userId: string, field: 'user' | 'slot') => {
-    if (field === 'user') {
-      await APIUpdateUsersSearchScore(userId);
-    }
+  const handleSuggestionClick = async (href: string, fieldUniqueId: string, field: 'user' | 'slot') => {
+    await APIUpdateUsersSearchScore(fieldUniqueId, field);
     setShowSuggestions(false);
     router.push(href);
   };
 
   return (
     <div className="relative w-full max-w-md mx-auto" ref={wrapperRef}>
+      {/* Search input filed */}
       <div className="relative">
         <input
           type="text"
@@ -98,11 +98,14 @@ const SearchBar = () => {
         </div>
       </div>
 
+      {/* Showing suggestion & loading  */}
       {showSuggestions && searchQuery && (
         <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-fade-in">
           <div className="divide-y divide-gray-100 max-h-64 overflow-auto">
             {loading && (
-              <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
+              <div className="px-4 py-3 text-sm text-gray-500">
+                <SearchLoading />
+              </div>
             )}
             {!loading && suggestions.length === 0 && (
               <div className="px-4 py-3 text-sm text-gray-500">No suggestions found</div>
@@ -111,7 +114,10 @@ const SearchBar = () => {
               suggestions.map((suggestion) => (
                 <button
                   key={suggestion._id}
-                  onClick={() => handleSuggestionClick(suggestion.href, suggestion._id, suggestion.field)}
+                  onClick={() => {
+                    handleSuggestionClick(suggestion.href, suggestion._id, suggestion.field);
+                    setSearchQuery(suggestion.name);
+                  }}
                   className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
                 >
                   <div className="font-medium">{suggestion.name}</div>

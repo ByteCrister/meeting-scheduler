@@ -10,16 +10,21 @@ import { setFriendDropDialog } from "@/lib/features/component-state/componentSli
 import LoadingSpinner from "../global-ui/ui-component/LoadingSpinner";
 import { unRemovedFriend } from "@/utils/client/api/api-friendZone";
 import { useCallback } from "react";
-import { addNewFriend, toggleIsBtnLoading } from "@/lib/features/friend-zone/friendZoneSlice";
+import { toggleIsBtnLoading, toggleIsRemoved } from "@/lib/features/friend-zone/friendZoneSlice";
+import ShowToaster from "../global-ui/toastify-toaster/show-toaster";
 
 const FollowerCard = ({ follower }: { follower: FriendTypes; }) => {
     const dispatch = useAppDispatch();
 
+    // ? If you removed you'r follower and then you want to return the follower back
     const handleUndoRemoveFollower = useCallback(async () => {
+        // ? Toggle loading to that follower card button
         dispatch(toggleIsBtnLoading({ id: follower.id, isLoading: true }));
         const responseData = await unRemovedFriend(follower.id);
         if (responseData.success) {
-            dispatch(addNewFriend(responseData.data));
+            // ?  isRemoved is changed to true so follower returned
+            dispatch(toggleIsRemoved({ id: follower.id, isRemoved: false }));
+            ShowToaster(responseData.message, 'success');
         }
         dispatch(toggleIsBtnLoading({ id: follower.id, isLoading: false }));
     }, [dispatch, follower.id]);

@@ -4,9 +4,8 @@ import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 import { IFriendTypes, IPopulatedFriendTypes } from "../followers/route";
 import NotificationsModel, { INotificationType } from "@/models/NotificationsModel";
-import { getIOInstance } from "@/utils/socket/setIOInstance";
-import { getUserSocketId } from "@/utils/socket/socketUserMap";
 import { SocketTriggerTypes } from "@/utils/constants";
+import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
 
 // ? Get peoples that I follow
 export async function GET(req: NextRequest) {
@@ -54,14 +53,14 @@ export async function POST(req: NextRequest) {
     try {
         await ConnectDB();
         const userId = await getUserIdFromRequest(req);
-        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!userId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
         const { followingFriendId } = await req.json();
-        if (!followingFriendId) return NextResponse.json({ error: "Missing target user ID" }, { status: 400 });
+        if (!followingFriendId) return NextResponse.json({ message: "Missing target user ID" }, { status: 400 });
 
         // Prevent following self
         if (userId === followingFriendId) {
-            return NextResponse.json({ error: "You cannot follow yourself" }, { status: 400 });
+            return NextResponse.json({ message: "You cannot follow yourself" }, { status: 400 });
         }
 
         const currentUser = await UserModel.findById(userId);
@@ -88,6 +87,7 @@ export async function POST(req: NextRequest) {
         await currentUser.save();
         await targetUser.save();
 
+        // * New Notification Object 
         const now = new Date();
         const sendNewNotification = {
             type: INotificationType.FOLLOW,
@@ -99,73 +99,81 @@ export async function POST(req: NextRequest) {
             createdAt: now,
             expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
         };
+        // * Notification is pushed and saved to collection
         const notificationDoc = new NotificationsModel(sendNewNotification);
         const savedNotification = await notificationDoc.save();
-        // ? Incrementing count of new notification by 1+ to the followed person
+
+        // ? Incrementing count of unseen notifications by +1 to the followed person
         await UserModel.findByIdAndUpdate(targetUser._id, { $inc: { countOfNotifications: 1 } }, { new: true });
 
-        // Emit via shared socket instance
-        const io = getIOInstance();
+        // * --------------- socket -------------------
+        // ! Emit a notification to the owner of the slot        
+        triggerSocketEvent({
+            userId: targetUser._id.toString(),
+            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+            notificationData: {
+                ...sendNewNotification,
+                _id: savedNotification._id,
+                image: currentUser?.image,
+            },
+        });
 
-        // Emit a notification to the owner of the slot
-        const notificationData = {
-            ...sendNewNotification,
-            _id: savedNotification._id,
-            senderImage: currentUser?.image,
-        };
-
-        // emit notification to the followed's account
-        const socketId = getUserSocketId(targetUser._id); // Get specific socket
-        if (socketId) {
-            io.to(socketId).emit(SocketTriggerTypes.RECEIVED_NOTIFICATION, {
-                userId: targetUser._id,
-                notificationData
-            });
+        // ? The user's object whom you started following
+        const followingUser = {
+            id: targetUser._id.toString(),
+            name: targetUser.username,
+            title: targetUser.title,
+            image: targetUser.image,
+            isRemoved: false,
         }
 
-        return NextResponse.json({ message: "Followed successfully", success: true }, { status: 200 });
+        return NextResponse.json({ message: "Followed successfully", data: followingUser, success: true }, { status: 200 });
     } catch (error) {
         console.log(error);
         return NextResponse.json({ message: "Internal server error" }, { status: 500 });
     }
 }
 
-// ? Unfollow any user
+// ? Unfollow any user, the persons who you followed
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
+
         const currentUserId = await getUserIdFromRequest(req);
-        if (!currentUserId) return NextResponse.json({ message: "Unauthorized", success: false }, { status: 401 });
+        if (!currentUserId) {
+            return NextResponse.json({ message: "Unauthorized", success: false }, { status: 401 });
+        }
 
         const { followingFriendId } = await req.json();
-        if (!followingFriendId) return NextResponse.json({ message: "Missing target user ID", success: false }, { status: 400 });
+        if (!followingFriendId) {
+            return NextResponse.json({ message: "Missing target user ID", success: false }, { status: 400 });
+        }
 
-        const currentUser = await UserModel.findById(currentUserId);
-        const targetUser = await UserModel.findById(followingFriendId);
+        const [currentUser, targetUser] = await Promise.all([
+            UserModel.findById(currentUserId).select("_id"), // only need _id to verify existence
+            UserModel.findById(followingFriendId).select("_id"),
+        ]);
 
         if (!currentUser || !targetUser) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        // Remove from following
-        currentUser.following = currentUser.following.filter(
-            (entry: { userId: string }) => entry.userId.toString() !== followingFriendId
-        );
-
-        // Remove from followers
-        targetUser.followers = targetUser.followers.filter(
-            async (entry: { userId: string }) => entry.userId.toString() !== await currentUserId
-        );
-
-        await currentUser.save();
-        await targetUser.save();
-
-        // * Delete notification msg if user had been following before
-        await NotificationsModel.deleteMany({
-            sender: currentUserId,
-            receiver: followingFriendId,
-            type: INotificationType.FOLLOW,
-        });
+        // Pull from both user's arrays
+        await Promise.all([
+            UserModel.updateOne(
+                { _id: currentUserId },
+                { $pull: { following: { userId: followingFriendId } } }
+            ),
+            UserModel.updateOne(
+                { _id: followingFriendId },
+                { $pull: { followers: { userId: currentUserId } } }
+            ),
+            // NotificationsModel.deleteMany({
+            //     sender: currentUserId,
+            //     receiver: followingFriendId,
+            //     type: INotificationType.FOLLOW,
+            // })
+        ]);
 
         return NextResponse.json({ message: "Unfollowed successfully", success: true }, { status: 200 });
     } catch (error) {

@@ -25,20 +25,18 @@ const FriendDropDialog = ({ listType }: PropTypes) => {
     if (!userId) return;
 
     setIsLoading(true);
-
+    // ? if current friend list is followers then  user Clicked on for removeFriend() else user is in following friend list so unfollowFriend() will execute
     const responseData = listType === 'followers'
       ? await removeFriend(userId)
       : await unfollowFriend(userId);
 
     if (responseData.success) {
+      // ? Follower/following friend will still exist in redux-store but the state isRemoved will toggled true
+      dispatch(toggleIsRemoved({ id: userId, isRemoved: true }));
       ShowToaster(responseData.message, 'success');
-      if (listType === 'followers') dispatch(toggleIsRemoved({ id: userId, isRemoved: true }));
     }
-    if (listType === 'followers') dispatch(toggleIsRemoved({ id: userId, isRemoved: true }));
-
     setIsLoading(false);
   };
-
 
   const handleOnChange = () => {
     dispatch(setFriendDropDialog({ isOpen: false, user: null }));

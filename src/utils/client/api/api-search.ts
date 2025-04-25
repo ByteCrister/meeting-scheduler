@@ -5,7 +5,7 @@ export const APIGetSearchSuggestion = async (query: string) => {
     return responseData;
 }
 
-export const APIUpdateUsersSearchScore = async (userId: string) => {
-    const responseData = await apiService.put(`/api/searching`, { userId });
+export const APIUpdateUsersSearchScore = async (fieldUniqueId: string, field: 'user' | 'slot') => {
+    const responseData = await apiService.put(`/api/searching`, { fieldUniqueId, field });
     return responseData;
 };

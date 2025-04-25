@@ -1,5 +1,4 @@
 import ConnectDB from "@/config/ConnectDB";
-import NotificationsModel, { INotificationType } from "@/models/NotificationsModel";
 import UserModel from "@/models/UserModel";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
@@ -59,7 +58,7 @@ export async function GET(req: NextRequest) {
 }
 
 
-// ? Unremoved a follower, suppose I have just removed a follower from my list but I want undone
+// ? Unremoved a follower, suppose I have just removed a follower from my list but now I want undo.
 export async function PUT(req: NextRequest) {
     try {
         await ConnectDB();
@@ -67,7 +66,7 @@ export async function PUT(req: NextRequest) {
         const currentUserId = await getUserIdFromRequest(req);
         if (!currentUserId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-        // ? Who follow me
+        // ? The user who followed me
         const { followerId } = await req.json();
         if (!followerId) return NextResponse.json({ message: "Missing target user ID" }, { status: 400 });
 
@@ -104,7 +103,7 @@ export async function PUT(req: NextRequest) {
 }
 
 
-// ? Remove follower
+// ? Remove follower, persons who followed you
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
@@ -114,40 +113,38 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        // ? Who follow me
         const { followerId } = await req.json();
         if (!followerId) {
             return NextResponse.json({ message: "Missing target user ID" }, { status: 400 });
         }
 
-        const currentUser = await UserModel.findById(currentUserId);
-        const targetUser = await UserModel.findById(followerId);
-
+        // Ensure both users exist (can be skipped if you're confident)
+        const [currentUser, targetUser] = await Promise.all([
+            UserModel.findById(currentUserId).select("_id"),
+            UserModel.findById(followerId).select("_id"),
+        ]);
         if (!currentUser || !targetUser) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        // Remove from following
-        currentUser.following = currentUser.following.filter(
-            (entry: { userId: string }) => entry.userId.toString() !== followerId
-        );
+        // Atomically remove each other from the relevant lists
+        await Promise.all([
+            UserModel.updateOne(
+                { _id: currentUserId },
+                { $pull: { followers: { userId: followerId } } }
+            ),
+            UserModel.updateOne(
+                { _id: followerId },
+                { $pull: { following: { userId: currentUserId } } }
+            ),
+            // NotificationsModel.deleteMany({
+            //     sender: followerId,
+            //     receiver: currentUserId,
+            //     type: INotificationType.FOLLOW,
+            // }),
+        ]);
 
-        // Remove from followers
-        targetUser.followers = targetUser.followers.filter(
-            async (entry: { userId: string }) => entry.userId.toString() !== await currentUserId
-        );
-
-        await currentUser.save();
-        await targetUser.save();
-
-        // Remove FOLLOW notification
-        await NotificationsModel.deleteMany({
-            sender: currentUserId,
-            receiver: followerId,
-            type: INotificationType.FOLLOW,
-        });
-
-        return NextResponse.json({ message: "Unfollowed successfully", success: true }, { status: 200 });
+        return NextResponse.json({ message: "Follower removed successfully", success: true }, { status: 200 });
 
     } catch (error) {
         console.error(error);
