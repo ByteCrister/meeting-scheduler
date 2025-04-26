@@ -25,6 +25,8 @@ const MeetingCard = ({ feed, handleBookSlot, isExpand, meetingPost }: PropTypes)
     const [isExpanded, setIsExpanded] = useState(isExpand);
     const bookedCount = feed.bookedUsers.length;
 
+    console.log(feed);
+
     const convertedDateByTimeZone = convertDateTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationFrom);
     const convertedDurationFrom = convertTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationFrom);
     const convertedDurationTo = convertTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationTo);

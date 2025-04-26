@@ -16,7 +16,10 @@ export function convertDateTimeBetweenTimeZones(
   dateStr: string,
   timeStr: string
 ): string {
-  // Step 1: Extract the date part
+  if (!dateStr || !timeStr) {
+    return '';
+  }
+  // Extract the date part
   const datePart = dateStr.slice(0, 10); // "YYYY-MM-DD"
 
   if (fromTimeZone === toTimeZone) {
@@ -24,22 +27,30 @@ export function convertDateTimeBetweenTimeZones(
     return dateOnly.toFormat("MMM d, yyyy");
   }
 
-  // Step 2: Combine date and time
+  // Combine date and time
   const combinedDateTime = `${datePart} ${timeStr}`;
 
-  // Step 3: Parse in source timezone
-  const sourceDateTime = DateTime.fromFormat(combinedDateTime, "yyyy-MM-dd hh:mm a", {
+  // First try 24-hour parsing
+  let sourceDateTime = DateTime.fromFormat(combinedDateTime, "yyyy-MM-dd HH:mm", {
     zone: normalizeUtcOffset(fromTimeZone),
   });
 
+  // If failed, try 12-hour (AM/PM) parsing
   if (!sourceDateTime.isValid) {
+    sourceDateTime = DateTime.fromFormat(combinedDateTime, "yyyy-MM-dd hh:mm a", {
+      zone: normalizeUtcOffset(fromTimeZone),
+    });
+  }
+
+  if (!sourceDateTime.isValid) {
+    console.error(sourceDateTime.invalidExplanation);
     throw new Error("Invalid source date-time parsing.");
   }
 
-  // Step 4: Convert to target timezone
+  // Convert to target timezone
   const targetDateTime = sourceDateTime.setZone(normalizeUtcOffset(toTimeZone));
 
-  // Step 5: Return date
+  // Return date
   return targetDateTime.toFormat("yyyy-MM-dd");
 }
 
