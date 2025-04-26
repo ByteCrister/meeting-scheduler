@@ -5,8 +5,6 @@ import ConnectDB from "@/config/ConnectDB";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import SlotModel, { IRegisterStatus } from "@/models/SlotModel";
 import UserModel, { IUsers } from "@/models/UserModel";
-import { formatUTCDateToOffset } from "@/utils/client/date-convertions/formatUTCDateToOffset";
-import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
 import { SocketTriggerTypes } from "@/utils/constants";
 import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
 
@@ -37,30 +35,33 @@ export const GET = async (req: NextRequest) => {
         const ownerIds = [...new Set(slots.map(slot => slot.ownerId?.toString()))].filter(Boolean);
 
         // fetch all creators
-        const owners = await UserModel.find({ _id: { $in: ownerIds } }, '_id username').lean();
-        const ownerMap: Record<string, string> = {};
+        const owners = await UserModel.find({ _id: { $in: ownerIds } }, '_id username timeZone').lean();
+        const ownerMap: Record<string, { name: string, timeZone: string }> = {};
         owners.forEach(owner => {
-            ownerMap[(owner._id as string).toString()] = owner.username;
+            ownerMap[(owner._id as string).toString()] = { name: owner.username, timeZone: owner.timeZone.toString() };
         });
 
         // final formatted data
         const formattedData = slots.map((slot) => {
             const creatorId = slot.ownerId?.toString() || '';
+            const owner = ownerMap[creatorId];
+        
             return {
                 _id: (slot._id as string).toString(),
                 title: slot.title,
                 category: slot.category,
                 description: slot.description,
-                meetingDate: formatUTCDateToOffset(slot.meetingDate, user.timeZone),
+                meetingDate: slot.meetingDate,
                 tags: slot.tags,
-                durationFrom: getConvertedTime(slot.meetingDate, slot.durationFrom, user.timeZone),
-                durationTo: getConvertedTime(slot.meetingDate, slot.durationFrom, user.timeZone),
+                durationFrom: slot.durationFrom,
+                durationTo: slot.durationTo,
+                timeZone: owner?.timeZone || 'UTC',
                 status: slot.status,
                 creatorId,
-                creator: ownerMap[creatorId] || 'Unknown',
+                creator: owner?.name || 'Unknown',
             };
         });
-
+        
         return NextResponse.json({ success: true, data: formattedData }, { status: 200 });
     } catch (error) {
         console.log('[GET USER SLOT BOOKING ERROR]', error);

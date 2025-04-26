@@ -2,15 +2,15 @@
 
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
 import { NewsFeedTypes } from '@/types/client-types';
 import { useRouter } from 'next/navigation';
-import { formatUTCDateToOffset } from '@/utils/client/date-convertions/formatUTCDateToOffset';
 import { useAppSelector } from '@/lib/hooks';
-import { getConvertedTime } from '@/utils/client/date-convertions/convertDateTime';
+import { formateSlotMeetingDate } from '../my-slots/SlotCard';
+import { convertDateTimeBetweenTimeZones } from '@/utils/client/date-formatting/convertDateTimeBetweenTimeZones';
+import { convertTimeBetweenTimeZones } from '@/utils/client/date-formatting/convertTimeBetweenTimeZones';
 
 type PropTypes = {
     feed: NewsFeedTypes;
@@ -20,15 +20,15 @@ type PropTypes = {
 };
 
 
-const actualConvertedDurationTime = (meetingDate: string, durationTime: string, targetTimeZone: string, userTimeZone: string) => {
-    const isSameTimeZone = targetTimeZone === userTimeZone;
-    return isSameTimeZone ? durationTime : getConvertedTime(meetingDate, durationTime, userTimeZone);
-};
-
 const MeetingCard = ({ feed, handleBookSlot, isExpand, meetingPost }: PropTypes) => {
-    const userTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
+    const currentUserTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
     const [isExpanded, setIsExpanded] = useState(isExpand);
     const bookedCount = feed.bookedUsers.length;
+
+    const convertedDateByTimeZone = convertDateTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationFrom);
+    const convertedDurationFrom = convertTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationFrom);
+    const convertedDurationTo = convertTimeBetweenTimeZones(feed.owner.timeZone, currentUserTimeZone!, feed.meetingDate, feed.durationTo);
+
     const router = useRouter();
 
     if (!feed || !feed.owner || !feed.title) {
@@ -73,9 +73,7 @@ const MeetingCard = ({ feed, handleBookSlot, isExpand, meetingPost }: PropTypes)
                     {/* Calendar icon with date */}
                     <div className="flex items-center gap-1 text-sm text-gray-500">
                         <Calendar className="w-4 h-4" />
-                        <span>{format(new Date(
-                            formatUTCDateToOffset(feed.meetingDate, userTimeZone!)
-                        ), 'MMM d')}</span>
+                        <span>{formateSlotMeetingDate(convertedDateByTimeZone)}</span>
                     </div>
                     {/* Chevron */}
                     <motion.div
@@ -119,11 +117,7 @@ const MeetingCard = ({ feed, handleBookSlot, isExpand, meetingPost }: PropTypes)
                                 <div className="bg-gray-50 p-3 rounded-lg">
                                     <p className="text-gray-500">Time</p>
                                     <p className="text-gray-800 font-medium">
-                                        {
-                                            `${actualConvertedDurationTime(feed.meetingDate, feed.durationFrom, feed.owner.timeZone, userTimeZone!)} - 
-                                            ${actualConvertedDurationTime(feed.meetingDate, feed.durationTo, feed.owner.timeZone, userTimeZone!)}
-                                            `
-                                        }
+                                        {`${convertedDurationFrom} - ${convertedDurationTo}`}
                                     </p>
                                 </div>
                                 <div className="bg-gray-50 p-3 rounded-lg">

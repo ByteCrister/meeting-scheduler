@@ -8,7 +8,8 @@ import { useAppDispatch } from '@/lib/hooks';
 import { useCallback } from 'react';
 import { toggleDeleteBookedSlotAlert, toggleViewBookedSlot } from '@/lib/features/component-state/componentSlice';
 import JoinMeeting from './JoinMeeting';
-import { getDuration } from '@/utils/client/date-convertions/getDuration';
+import { getDuration } from '@/utils/client/date-formatting/getTimeDuration';
+import { convertDateTimeBetweenTimeZones } from '@/utils/client/date-formatting/convertDateTimeBetweenTimeZones';
 
 const statusColors = {
     upcoming: 'bg-blue-100 text-blue-800',
@@ -18,10 +19,12 @@ const statusColors = {
 };
 
 
-const MeetingCard = ({ meeting }: { meeting: BookedSlotsTypes }) => {
+const MeetingCard = ({ meeting, currentUserTimeZone }: { meeting: BookedSlotsTypes, currentUserTimeZone: string }) => {
     const dispatch = useAppDispatch();
 
     const isJoinEnabled = meeting.status === 'ongoing';
+    const formattedMeetingDate = formateSlotMeetingDate(convertDateTimeBetweenTimeZones(currentUserTimeZone!, meeting.timeZone, meeting.meetingDate!, meeting.durationFrom));
+
 
     const handleViewClick = useCallback(() => {
         dispatch(toggleViewBookedSlot({ isOpen: true, Slot: meeting }));
@@ -55,7 +58,7 @@ const MeetingCard = ({ meeting }: { meeting: BookedSlotsTypes }) => {
                             </div>
                             <div className="flex items-center text-sm text-gray-600">
                                 <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                {formateSlotMeetingDate(meeting.meetingDate || '')}
+                                {formattedMeetingDate}
                             </div>
                             <div className="flex items-center text-sm text-gray-600">
                                 <Clock className="w-4 h-4 mr-2 text-gray-400" />

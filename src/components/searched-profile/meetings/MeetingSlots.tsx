@@ -13,9 +13,10 @@ import { MeetingSlotCardSkeleton } from './MeetingSlotCardSkeleton';
 import PaginateButtons from '@/components/global-ui/ui-component/PaginateButtons';
 import CAT from './CAT';
 import { useAppSelector } from '@/lib/hooks';
-import { formatUTCDateToOffset } from '@/utils/client/date-convertions/formatUTCDateToOffset';
-import { getConvertedTime } from '@/utils/client/date-convertions/convertDateTime';
-import { getDuration } from '@/utils/client/date-convertions/getDuration';
+import { DateTime } from 'luxon';
+import { convertTimeBetweenTimeZones } from '@/utils/client/date-formatting/convertTimeBetweenTimeZones';
+import { convertDateTimeBetweenTimeZones } from '@/utils/client/date-formatting/convertDateTimeBetweenTimeZones';
+import { calculateTimeDurationByConvertedTimes } from '@/utils/client/date-formatting/calculateTimeDurationByConvertedTimes';
 
 interface BookedMeeting {
   _id: string;
@@ -29,30 +30,6 @@ interface BookedMeeting {
   createdAt: string;
   isBooked: boolean;
 }
-
-export const getMDInMyTZ = (currentTimeZone: string, userTimeZone: string, slotMeetingDate: string) => {
-  const isDifferentTZ = currentTimeZone !== userTimeZone;
-  const meetingDate = isDifferentTZ
-    ? formatUTCDateToOffset(slotMeetingDate, currentTimeZone)
-    : slotMeetingDate;
-
-  return meetingDate;
-};
-
-export const getConvertedDurationTime = (currentTimeZone: string, userTimeZone: string, meetingDate: string, time: string) => {
-  const isDifferentTZ = currentTimeZone !== userTimeZone;
-  const convertedTime = isDifferentTZ ? getConvertedTime(meetingDate, time, currentTimeZone) : time;
-  return convertedTime;
-}
-
-export const getTimeDurationInMyTZ = (currentTimeZone: string, userTimeZone: string, meetingDate: string, fromTime: string, toTime: string) => {
-  const from = getConvertedDurationTime(currentTimeZone, userTimeZone, meetingDate, fromTime);
-  const to = getConvertedDurationTime(currentTimeZone, userTimeZone, meetingDate, toTime);
-  const timeDuration = getDuration(from, to);
-  return timeDuration;
-}
-
-
 
 
 export const MeetingSlots = ({ userId, userTimeZone }: { userId: string; userTimeZone: string }) => {
@@ -219,22 +196,27 @@ export const MeetingSlots = ({ userId, userTimeZone }: { userId: string; userTim
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Calendar className="mr-2 h-4 w-4 text-primary" />
-                    <span>
-                      {new Date(
-                        getMDInMyTZ(currentUserTimeZone!, userTimeZone, meeting.meetingDate)
-                      ).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </span>
+                    {
+                      currentUserTimeZone && userTimeZone && meeting.meetingDate && (
+                        <span>
+                          {meeting.meetingDate ? (
+                            DateTime.fromISO(
+                              convertDateTimeBetweenTimeZones(userTimeZone, currentUserTimeZone, meeting.meetingDate, meeting.durationFrom)
+                            ).toFormat('ccc, LLL d')
+                          ) : (
+                            'Meeting Date Unavailable'
+                          )}
+                        </span>
+                      )
+                    }
+
                   </div>
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-primary" />
                     <span>
-                      {getConvertedDurationTime(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom)}
+                      {convertTimeBetweenTimeZones(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom)}
                       ({
-                        getTimeDurationInMyTZ(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom, meeting.durationTo)
+                        calculateTimeDurationByConvertedTimes(currentUserTimeZone!, userTimeZone, meeting.meetingDate, meeting.durationFrom, meeting.durationTo)
                       })</span>
                   </div>
                   <div className="flex items-center">

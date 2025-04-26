@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { handleImage } from "@/utils/client/image-handler";
+import { handleImage } from "@/utils/client/others/image-handler";
 import Image from "next/image";
 import React, { useState } from "react";
 import ImageCropDialog from "../ImageCropDialog";

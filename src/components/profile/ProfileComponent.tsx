@@ -5,7 +5,7 @@ import EditableField from './EditableField';
 import StatCard from './StatCard';
 import ProfileImage from './ProfileImage';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { handleImage } from '@/utils/client/image-handler';
+import { handleImage } from '@/utils/client/others/image-handler';
 import ImageCropDialog from '../global-ui/dialoges/ImageCropDialog';
 import LoadingUIBlackBullfrog from '../global-ui/ui-component/LoadingUIBlackBullfrog';
 

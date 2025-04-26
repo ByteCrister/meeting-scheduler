@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAppSelector } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { openSans } from "@/utils/client/fonts";
+import { openSans } from "@/utils/client/others/fonts";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 import { jobs } from "../authentication/auth-component/SelectProfession";

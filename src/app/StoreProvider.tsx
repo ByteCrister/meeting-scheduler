@@ -11,7 +11,7 @@ import SlotDropDialog from "@/components/global-ui/dialoges/SlotDropDialog";
 import NotifyChangeDialog from "@/components/global-ui/dialoges/NotifyChangeDialog";
 import { setUser } from "@/lib/features/users/userSlice";
 import { Users } from "@/types/client-types";
-import { getUserStatus } from "@/utils/client/getUserStatus";
+import { getUserStatus } from "@/utils/client/others/getUserStatus";
 import MeetingDialog from "@/components/global-ui/dialoges/meeting-dialog/MeetingDialog";
 import { BookedSlotDialog } from "@/components/booked-meetings/BookedSlotDialog";
 import { AlertDeleteBookedSlot } from "@/components/booked-meetings/AlertDeleteBookedSlot";

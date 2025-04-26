@@ -3,7 +3,7 @@
 import { JSX, useState } from "react";
 import { useFormik } from 'formik';
 import { Open_Sans } from "next/font/google";
-import { signInValidation } from "@/utils/client/auth-validation";
+import { signInValidation } from "@/utils/client/others/auth-validation";
 import ShowToaster from "../global-ui/toastify-toaster/show-toaster";
 import apiService from "@/utils/client/api/api-services";
 import LoadingSpinner from "../global-ui/ui-component/LoadingSpinner";

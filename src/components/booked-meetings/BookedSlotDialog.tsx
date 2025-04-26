@@ -6,10 +6,24 @@ import { Badge } from "../ui/badge";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { toggleViewBookedSlot } from "@/lib/features/component-state/componentSlice";
 import { formateSlotMeetingDate } from "../my-slots/SlotCard";
+import { convertTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertTimeBetweenTimeZones";
+import { convertDateTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertDateTimeBetweenTimeZones";
 
 
 export function BookedSlotDialog() {
     const { isOpen, Slot } = useAppSelector(state => state.componentStore.viewBookedSlotDialog);
+    const currentUserTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
+
+    const convertedMeetingDateUTC = convertDateTimeBetweenTimeZones(currentUserTimeZone!, Slot?.timeZone as string, Slot?.meetingDate as string, Slot?.durationFrom as string);
+    const formattedScheduleDate = formateSlotMeetingDate(convertedMeetingDateUTC || '');
+
+    let formattedDurationFrom = '';
+    let formattedDurationTo = '';
+    if (Slot && Slot?.meetingDate && Slot.timeZone && Slot.durationFrom && Slot.durationTo) {
+        formattedDurationFrom = convertTimeBetweenTimeZones(currentUserTimeZone!, Slot.timeZone, Slot?.meetingDate, Slot?.durationFrom);
+        formattedDurationTo = convertTimeBetweenTimeZones(currentUserTimeZone!, Slot.timeZone, Slot?.meetingDate, Slot?.durationTo);
+    }
+
     const dispatch = useAppDispatch();
 
     const onOpenChange = () => {
@@ -22,7 +36,7 @@ export function BookedSlotDialog() {
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">{Slot?.title}</DialogTitle>
                     <DialogDescription>
-                        Scheduled on {formateSlotMeetingDate(Slot?.meetingDate)}
+                        Scheduled on {formattedScheduleDate}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -38,9 +52,15 @@ export function BookedSlotDialog() {
                         <p className="text-muted-foreground mt-1">{Slot?.description}</p>
                     </div>
 
-                    <div>
-                        <strong>Duration:</strong> {Slot?.durationFrom} – {Slot?.durationTo}
-                    </div>
+                    {
+                        Slot?.meetingDate && Slot.timeZone && Slot.durationFrom && Slot.durationTo
+                        && <>
+                            <div>
+                                <strong>Duration:</strong>
+                                {`${formattedDurationFrom} - ${formattedDurationTo}`}
+                            </div>
+                        </>
+                    }
 
                     <div>
                         <strong>Status:</strong>

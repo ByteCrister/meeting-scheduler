@@ -6,7 +6,7 @@ import { IoEyeSharp } from "react-icons/io5";
 import { IoEyeOffSharp } from "react-icons/io5";
 import { Open_Sans } from "next/font/google";
 import { userSignInType, userSignUpType } from "@/types/client-types";
-import { forgotPassEmailValidation, forgotPassPasswordValidation } from "@/utils/client/auth-validation";
+import { forgotPassEmailValidation, forgotPassPasswordValidation } from "@/utils/client/others/auth-validation";
 import apiService from "@/utils/client/api/api-services";
 import ShowToaster from "../global-ui/toastify-toaster/show-toaster";
 import LoadingSpinner from "../global-ui/ui-component/LoadingSpinner";

@@ -2,7 +2,7 @@
 
 import { Notification } from "@/types/client-types";
 import { MoreVertical } from "lucide-react";
-import getNotificationTime from "@/utils/client/getNotificationTime";
+import getNotificationTime from "@/utils/client/others/getNotificationTime";
 import Image from "next/image";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";

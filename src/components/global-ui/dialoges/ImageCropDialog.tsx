@@ -11,7 +11,7 @@ import {
     AlertDialogAction,
     AlertDialogDescription, // Import the AlertDialogDescription component
 } from "@/components/ui/alert-dialog";
-import { getCroppedImg } from "@/utils/client/image-handler";
+import { getCroppedImg } from "@/utils/client/others/image-handler";
 
 export interface Area {
     width: number;

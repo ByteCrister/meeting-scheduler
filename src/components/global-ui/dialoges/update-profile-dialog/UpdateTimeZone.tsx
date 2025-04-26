@@ -18,7 +18,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { openSans } from "@/utils/client/fonts";
+import { openSans } from "@/utils/client/others/fonts";
 import { timeZones } from "@/components/auth/auth-component/SelectTimeZone";
 import { useAppSelector } from "@/lib/hooks";
 

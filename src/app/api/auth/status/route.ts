@@ -4,6 +4,8 @@ import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiNotificationTypes } from "@/utils/constants";
 import SlotModel from "@/models/SlotModel";
+import { convertDateTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertDateTimeBetweenTimeZones";
+import { convertTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertTimeBetweenTimeZones";
 // import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
 
 
@@ -32,8 +34,8 @@ export async function GET(req: NextRequest) {
             .sort({ meetingDate: -1 })
             .lean();
 
-            // Format response to match sampleActivities
-            const activities = slots.map((slot) => ({
+        // Format response to match sampleActivities
+        const activities = slots.map((slot) => ({
             id: slot._id,
             title: slot.title,
             time: user.timeZone,
@@ -110,6 +112,38 @@ export async function PUT(req: NextRequest) {
 
         if (!updatedUser) {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        }
+
+
+        // If the updated field is timeZone, update the times for all the user's meetings
+        if (field === 'timeZone') {
+            // Fetch all the user's slots (either booked or registered)
+            const userSlots = await SlotModel.find({
+                ownerId: userId,
+                meetingDate: { $gte: new Date() } // Fetch upcoming meetings
+            });
+
+            // Loop through all user slots and update their times based on the new time zone
+            for (const slot of userSlots) {
+                const oldTimeZone = updatedUser.timeZone; // Old time zone before the update
+                const newTimeZone = value; // New time zone after the update
+
+                // Update meetingDate, durationFrom, and durationTo
+                const updatedMeetingDate = convertDateTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationFrom);
+                const updatedDurationFrom = convertTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationFrom);
+                const updatedDurationTo = convertTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationTo);
+
+                // Save the updated times back to the slot
+                await SlotModel.findByIdAndUpdate(
+                    slot._id,
+                    {
+                        meetingDate: updatedMeetingDate,
+                        durationFrom: updatedDurationFrom,
+                        durationTo: updatedDurationTo,
+                    },
+                    { new: true }
+                );
+            }
         }
 
         return NextResponse.json(

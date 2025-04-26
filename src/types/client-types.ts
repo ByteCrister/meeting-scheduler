@@ -11,6 +11,7 @@ export type BookedSlotsTypes = Omit<
     | "createdAt"
     | "updatedAt"
 > & {
+    timeZone: string;
     creatorId: string;
     creator: string;
 };

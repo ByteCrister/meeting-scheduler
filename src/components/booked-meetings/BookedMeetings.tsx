@@ -19,6 +19,8 @@ export default function BookedMeetings() {
   const dispatch = useAppDispatch();
   const SearchBookedMeetings = useBookedSearch();
 
+  const currentUserTimeZone = useAppSelector(state => state.userStore.user?.timeZone);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isFetching, setIsFetching] = useState<boolean>(false);
@@ -118,7 +120,7 @@ export default function BookedMeetings() {
       {/* Meetings List */}
       <div className="space-y-4">
         {paginatedMeetings.map((meeting, index) => (
-          <MeetingCard key={meeting._id + meeting.category + index} meeting={meeting} />
+          <MeetingCard key={meeting._id + index} meeting={meeting} currentUserTimeZone={currentUserTimeZone!} />
         ))}
       </div>
 
