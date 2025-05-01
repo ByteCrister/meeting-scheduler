@@ -21,7 +21,7 @@ export interface ISlot extends Document {
     bookedUsers: string[]; // Array of userIds
     trendScore: number;
     engagementRate: number;
-    status: "upcoming" | "ongoing" | "completed" | "expired";
+    status: IRegisterStatus;
     createdAt: Date;
     updatedAt: Date;
 }

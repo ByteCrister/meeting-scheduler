@@ -1,4 +1,4 @@
-import { registerSlot } from "@/types/client-types"
+import { registerSlot, RegisterSlotStatus } from "@/types/client-types"
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 import { isEqual } from "lodash";
 
@@ -30,6 +30,12 @@ const slotSlice = createSlice({
             state.Store = state.Store?.map((item) => item._id === action.payload._id ? action.payload : item);
             state.tempStore = state.tempStore?.map((item) => item._id === action.payload._id ? action.payload : item);
         },
+
+        updateSlotStatus: (state, action: PayloadAction<{ slotId: string, newStatus: RegisterSlotStatus }>) => {
+            state.Store = state.Store.map((item) => item._id === action.payload.slotId ? ({ ...item, status: action.payload.newStatus }) : item);
+            state.tempStore = state.Store.map((item) => item._id === action.payload.slotId ? ({ ...item, status: action.payload.newStatus }) : item);
+        },
+
         sortTempSlots: (state, action: PayloadAction<registerSlot[]>) => {
             state.tempStore = [...action.payload];
         },
@@ -54,6 +60,7 @@ const slotSlice = createSlice({
 export const {
     addSlots,
     updateSlot,
+    updateSlotStatus,
     sortTempSlots,
     addNewSlot,
     deleteSlot,

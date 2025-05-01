@@ -10,6 +10,8 @@ import {
 } from "@/utils/socket/socketUserMap";
 import { setIOInstance } from "@/utils/socket/setIOInstance";
 
+import '../../utils/cron/updateSlotStatus';
+
 // Disable body parser for socket handling
 export const config = {
     api: {

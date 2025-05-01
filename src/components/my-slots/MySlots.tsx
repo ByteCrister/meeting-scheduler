@@ -36,10 +36,10 @@ export default function MySlots() {
     const fetchData = async () => {
       setIsFetching(true);
       const responseData = await apiService.get(`/api/user-slot-register`);
-  
+
       if (responseData.success && Array.isArray(responseData.data)) {
         const data = [...responseData.data];
-  
+
         if (searchedMeetingSlot) {
           const searchedIndex = data.findIndex(item => item._id === searchedMeetingSlot);
           if (searchedIndex > -1) {
@@ -47,19 +47,19 @@ export default function MySlots() {
             data.unshift(searchedItem);
           }
         }
-  
+
         dispatch(addSlots(data)); // Let your reducer handle comparison if needed
         dispatch(setCurrentPage(1));
       }
       setIsFetching(false);
     };
-  
+
     fetchData();
   }, [dispatch, searchedMeetingSlot]);
-  
+
   useEffect(() => {
     if (!searchedMeetingSlot || tempStore.length === 0) return;
-  
+
     const index = tempStore.findIndex(slot => slot._id === searchedMeetingSlot);
     if (index > 0) {
       const newSlots = [...tempStore];
@@ -69,7 +69,7 @@ export default function MySlots() {
       dispatch(setCurrentPage(1)); // Optional: reset page
     }
   }, [searchedMeetingSlot, tempStore, dispatch]);
-  
+
 
 
   const handleSort = useCallback((field: SortFieldButtons) => {
@@ -84,7 +84,7 @@ export default function MySlots() {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
-      if (sortField === 'createdAt') {
+      if (sortField === 'createdAt' || sortField === 'meetingDate') {
         const aDate = typeof aValue === 'string' ? new Date(aValue).getTime() : 0;
         const bDate = typeof bValue === 'string' ? new Date(bValue).getTime() : 0;
         return sortOrder === 'asc' ? aDate - bDate : bDate - aDate;
@@ -122,7 +122,7 @@ export default function MySlots() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           {/* Search Input */}
           <div className="w-full md:w-[70%]">
-            <SearchSlots />
+            <SearchSlots isFetching={isFetching} />
           </div>
 
           {/* Create Button */}

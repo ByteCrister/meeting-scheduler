@@ -35,7 +35,7 @@ const MeetingDialog = () => {
     return (
         <Dialog open={isOpen} onOpenChange={setOpen}>
 
-            <DialogContent className="max-w-xl w-full max-h-[80vh] overflow-y-auto p-4 sm:p-6 space-y-6 rounded-2xl shadow-xl">
+            <DialogContent className="max-w-xl w-full max-h-[80vh] overflow-y-auto p-4 sm:p-6 space-y-6 rounded-xl shadow-xl">
 
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-gray-900">

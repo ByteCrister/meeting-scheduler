@@ -9,6 +9,7 @@ import { useAppDispatch } from '@/lib/hooks';
 import { updateUserInfo } from '@/lib/features/users/userSlice';
 import apiService from '@/utils/client/api/api-services';
 import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
+import { APISendUpdatedTimeZoneEmail } from '@/utils/client/api/api-send-email';
 
 const EditableField = ({
     label,
@@ -26,7 +27,7 @@ const EditableField = ({
     handleLoadingChange: (isLoading: boolean) => void
 }) => {
     const [isEditing, setIsEditing] = useState(false);
-    const [tempValue, setTempValue] = useState(value?? '');
+    const [tempValue, setTempValue] = useState(value ?? '');
     const [hovered, setHovered] = useState(false);
     const dispatch = useAppDispatch();
 
@@ -35,19 +36,23 @@ const EditableField = ({
         updateProfileField(field, tempValue);
         setIsEditing(false);
         handleLoadingChange(false);
-        
+
     };
 
-     // * Update fields
-  const updateProfileField = async (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
-    const responseData = await apiService.put(
-      `/api/auth/status?field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`
-    );
-    if (responseData.success) {
-      dispatch(updateUserInfo({ field: field, updatedValue: value }));
-      ShowToaster(responseData.message, 'success');
-    }
-  };
+    // * Update fields
+    const updateProfileField = async (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
+        const responseData = await apiService.put(
+            `/api/auth/status?field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`
+        );
+        if (responseData.success) {
+            dispatch(updateUserInfo({ field: field, updatedValue: value }));
+            ShowToaster(responseData.message, 'success');
+            // ? executes only if the field is timeZone and updated timeZone is not same as the previous timeZone
+            if (field === 'timeZone' && value !== responseData.previous) {
+                await APISendUpdatedTimeZoneEmail({ updatedValue: value, previousValue: responseData.previous })
+            }
+        }
+    };
 
     return (
         <div
@@ -62,7 +67,7 @@ const EditableField = ({
                         label === 'Profession'
                             ? <Profession OnChange={(value) => setTempValue(value)} />
                             : label === 'Timezone'
-                                ? <TimeZone OnChange={(newValue)=> setTempValue(newValue)} />
+                                ? <TimeZone OnChange={(newValue) => setTempValue(newValue)} />
                                 : <input
                                     id={label}
                                     type="text"

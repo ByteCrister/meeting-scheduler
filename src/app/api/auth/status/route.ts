@@ -4,9 +4,6 @@ import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiNotificationTypes } from "@/utils/constants";
 import SlotModel from "@/models/SlotModel";
-import { convertDateTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertDateTimeBetweenTimeZones";
-import { convertTimeBetweenTimeZones } from "@/utils/client/date-formatting/convertTimeBetweenTimeZones";
-// import { getConvertedTime } from "@/utils/client/date-convertions/convertDateTime";
 
 
 export async function GET(req: NextRequest) {
@@ -87,14 +84,11 @@ export async function PUT(req: NextRequest) {
         const field = searchParams.get('field');
         const value = searchParams.get('value');
 
-        console.log(searchParams);
-
         if (!field || !value) {
             return NextResponse.json({ message: 'Missing query parameters' }, { status: 400 });
         }
 
         const allowedFields = ['username', 'title', 'image', 'profession', 'timeZone'];
-
         if (!allowedFields.includes(field)) {
             return NextResponse.json({ message: 'Field update not allowed' }, { status: 400 });
         }
@@ -104,54 +98,26 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
+        const previousValue = await UserModel.findById(userId).select(field);
         const updatedUser = await UserModel.findByIdAndUpdate(
             userId,
             { [field]: value },
             { new: true }
         ).select(field);
 
-        if (!updatedUser) {
-            return NextResponse.json({ message: 'User not found' }, { status: 404 });
-        }
-
-
-        // If the updated field is timeZone, update the times for all the user's meetings
-        if (field === 'timeZone') {
-            // Fetch all the user's slots (either booked or registered)
-            const userSlots = await SlotModel.find({
-                ownerId: userId,
-                meetingDate: { $gte: new Date() } // Fetch upcoming meetings
-            });
-
-            // Loop through all user slots and update their times based on the new time zone
-            for (const slot of userSlots) {
-                const oldTimeZone = updatedUser.timeZone; // Old time zone before the update
-                const newTimeZone = value; // New time zone after the update
-
-                // Update meetingDate, durationFrom, and durationTo
-                const updatedMeetingDate = convertDateTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationFrom);
-                const updatedDurationFrom = convertTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationFrom);
-                const updatedDurationTo = convertTimeBetweenTimeZones(oldTimeZone, newTimeZone, slot.meetingDate.toISOString(), slot.durationTo);
-
-                // Save the updated times back to the slot
-                await SlotModel.findByIdAndUpdate(
-                    slot._id,
-                    {
-                        meetingDate: updatedMeetingDate,
-                        durationFrom: updatedDurationFrom,
-                        durationTo: updatedDurationTo,
-                    },
-                    { new: true }
-                );
-            }
-        }
 
         return NextResponse.json(
-            { success: true, message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully.`, updated: { [field]: updatedUser[field as keyof typeof updatedUser] } },
+            {
+                success: true,
+                message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully.`,
+                updated: { [field]: updatedUser?.[field as keyof typeof updatedUser] },
+                previous: previousValue[field],
+            },
             { status: 200 }
         );
+
     } catch (error) {
-        console.log('Status PUT Error:', error);
+        console.error('Status PUT Error:', error);
         return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
 }

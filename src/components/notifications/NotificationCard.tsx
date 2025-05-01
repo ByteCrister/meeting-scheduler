@@ -29,7 +29,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
             : type === NotificationType.SLOT_CREATED
                 ? `/meeting-post-feed?meeting-post=${slot_id}`
                 : NotificationType.SLOT_UPDATED
-                    ? `/booked-meetings?meeting-slot=${notification._id}`
+                    ? `/booked-meetings?meeting-slot=${notification.slot}`
                     : type === NotificationType.SLOT_DELETED
                         ? `/searched-profile?user=${notification.sender}` : '';
         router.push(RoutingPath);

@@ -1,5 +1,5 @@
-import { ActivityType, BookedSlotsTypes, NewsFeedTypes, Notification, registerSlot, RegisterSlotStatus } from "@/types/client-types";
-import { NotificationType } from "../constants";
+import { ActivityType, BookedSlotsTypes, Notification, registerSlot, RegisterSlotStatus } from "@/types/client-types";
+import { NotificationType } from "@/utils/constants";
 
 export const FollowersData = [
     {
@@ -274,56 +274,56 @@ export const dummyNotifications: Notification[] = Array.from({ length: 30 }, (_,
 });
 
 
-export const staticFeeds: { [key: string]: NewsFeedTypes } = {
-    "1": {
-        _id: "1",
-        owner: {
-            username: "JohnDoe",
-            image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
-        },
-        title: "Frontend Weekly Meetup.",
-        description: "Discuss the latest in React, Tailwind and Next.js.",
-        tags: ['CSE', 'Software Engineering'],
-        meetingDate: '2025-04-09T00:00:00.000Z',
-        durationFrom: "01:00 PM",
-        durationTo: "02:00 PM",
-        guestSize: 10,
-        bookedUsers: ["a", "b", "c"],
-        isBooking: false,
-    },
-    "2": {
-        _id: "2",
-        owner: {
-            username: "JaneSmith",
-            image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
-        },
-        title: "UI/UX Brainstorming",
-        description: "Let’s talk user flows and micro-interactions.",
-        tags: ['CSE', 'Software Engineering', 'LLB', 'Hosting'],
-        meetingDate: '2025-04-09T00:00:00.000Z',
-        durationFrom: "03:00 PM",
-        durationTo: "03:50 PM",
-        guestSize: 5,
-        bookedUsers: ["a"],
-        isBooking: false,
-    },
-    "3": {
-        _id: "3",
-        owner: {
-            username: "CodeWizard",
-            image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
-        },
-        title: "Backend Best Practices",
-        description: "Diving into scalable architecture and security.",
-        tags: ['CSE', 'Software Engineering', 'cyber Security', 'Crime Branch'],
-        meetingDate: '2025-04-09T00:00:00.000Z',
-        durationFrom: "11:00 PM",
-        durationTo: "02:00 AM",
-        guestSize: 15,
-        bookedUsers: ["a", "b", "c", "d", "e"],
-        isBooking: false,
-    }
-};
+// export const staticFeeds: { [key: string]: NewsFeedTypes } = {
+//     "1": {
+//         _id: "1",
+//         owner: {
+//             username: "JohnDoe",
+//             image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
+//         },
+//         title: "Frontend Weekly Meetup.",
+//         description: "Discuss the latest in React, Tailwind and Next.js.",
+//         tags: ['CSE', 'Software Engineering'],
+//         meetingDate: '2025-04-09T00:00:00.000Z',
+//         durationFrom: "01:00 PM",
+//         durationTo: "02:00 PM",
+//         guestSize: 10,
+//         bookedUsers: ["a", "b", "c"],
+//         isBooking: false,
+//     },
+//     "2": {
+//         _id: "2",
+//         owner: {
+//             username: "JaneSmith",
+//             image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
+//         },
+//         title: "UI/UX Brainstorming",
+//         description: "Let’s talk user flows and micro-interactions.",
+//         tags: ['CSE', 'Software Engineering', 'LLB', 'Hosting'],
+//         meetingDate: '2025-04-09T00:00:00.000Z',
+//         durationFrom: "03:00 PM",
+//         durationTo: "03:50 PM",
+//         guestSize: 5,
+//         bookedUsers: ["a"],
+//         isBooking: false,
+//     },
+//     "3": {
+//         _id: "3",
+//         owner: {
+//             username: "CodeWizard",
+//             image: "https://img.lovepik.com/png/20231128/3d-illustration-avatar-profile-man-collection-guy-cheerful_716220_wh1200.png",
+//         },
+//         title: "Backend Best Practices",
+//         description: "Diving into scalable architecture and security.",
+//         tags: ['CSE', 'Software Engineering', 'cyber Security', 'Crime Branch'],
+//         meetingDate: '2025-04-09T00:00:00.000Z',
+//         durationFrom: "11:00 PM",
+//         durationTo: "02:00 AM",
+//         guestSize: 15,
+//         bookedUsers: ["a", "b", "c", "d", "e"],
+//         isBooking: false,
+//     }
+// };
 
 
 export const sampleActivities: ActivityType[] = [

@@ -1,6 +1,8 @@
+// src>utils>socket>initialSocket.ts
+
 import { io, Socket } from "socket.io-client";
 
-let socket: Socket;
+let socket: Socket | null = null;
 
 export const initiateSocket = () => {
     if (!socket) {
@@ -13,7 +15,7 @@ export const initiateSocket = () => {
         });
 
         socket.on("connect", () => {
-            console.log("Socket connected:", socket.id);
+            console.log("Socket connected:", socket?.id);
         });
 
         socket.on("connect_error", (error) => {
@@ -26,4 +28,8 @@ export const initiateSocket = () => {
     }
 
     return socket;
+};
+
+export const getSocket = (): Socket => {
+    return initiateSocket();
 };

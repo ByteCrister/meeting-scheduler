@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
                             notificationData: {
                                 ...notification,
                                 _id: saved._id,
+                                slot: updatedSlot._id,
                                 image: user?.image,
                             },
                         });

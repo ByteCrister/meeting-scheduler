@@ -1,7 +1,12 @@
-import { registerSlot, RegisterSlotStatus } from "@/types/client-types";
+"use client";
+
 import { motion } from 'framer-motion';
 import { Calendar, Tag, Users } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { useCallback } from "react";
+import { registerSlot, RegisterSlotStatus } from "@/types/client-types";
 import SlotOption from "./SlotOption";
+import { createVideoCall } from '@/utils/client/api/api-video-meeting-call';
 
 const statusColors: Record<RegisterSlotStatus, string> = {
     [RegisterSlotStatus.Upcoming]: 'bg-green-100 text-green-800',
@@ -36,15 +41,21 @@ export const formatDateStringToDateYear = (dateString?: string) => {
 };
 
 
-import { Sparkles } from "lucide-react";
-
 const SlotCard = ({ slot, isSearchedSlot }: { slot: registerSlot, isSearchedSlot: boolean }) => {
+
+    const handleStartVideoMeeting = useCallback(async () => {
+        const resData = await createVideoCall(slot._id);
+        if (resData.success) {
+            window.open(`/video-meeting?meetingId=${slot._id}`, '_blank')
+        }
+    }, [slot._id])
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={`relative rounded-xl transition-all duration-300 overflow-hidden
-                ${isSearchedSlot 
+                ${isSearchedSlot
                     ? 'bg-white/70 backdrop-blur-md shadow-lg ring-2 ring-offset-2 ring-blue-400/60 animate-pulse-slow'
                     : 'bg-white shadow-sm hover:shadow-md'}
             `}
@@ -86,12 +97,29 @@ const SlotCard = ({ slot, isSearchedSlot }: { slot: registerSlot, isSearchedSlot
                         </div>
                     </div>
                 </div>
+                <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    {/* Status badge */}
+                    <div className="flex justify-start md:justify-center">
+                        <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold ${statusColors[slot.status]}`}>
+                            {slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}
+                        </span>
+                    </div>
 
-                <div className="mt-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[slot.status]}`}>
-                        {slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}
-                    </span>
+                    {/* Start Meeting button */}
+                    {
+                        slot.status === RegisterSlotStatus.Ongoing && (
+                            <button
+                                id="start-meeting"
+                                onClick={handleStartVideoMeeting}
+                                className="w-full md:w-auto md:max-w-[180px] inline-flex items-center justify-center rounded-lg px-6 py-2 text-sm font-semibold shadow-sm transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                            >
+                                Start Meeting
+                            </button>
+                        )
+                    }
                 </div>
+
+
             </div>
         </motion.div>
     );
