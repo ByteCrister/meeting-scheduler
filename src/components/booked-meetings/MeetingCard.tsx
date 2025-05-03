@@ -1,6 +1,6 @@
 'use client';
 
-import { BookedSlotsTypes } from '@/types/client-types';
+import { BookedSlotsTypes, RegisterSlotStatus } from '@/types/client-types';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Eye, Trash2 } from 'lucide-react';
 import { formateSlotMeetingDate } from '../my-slots/SlotCard';
@@ -15,6 +15,7 @@ const statusColors = {
     upcoming: 'bg-blue-100 text-blue-800',
     ongoing: 'bg-green-100 text-green-800',
     completed: 'bg-gray-100 text-gray-800',
+    expired: 'bg-red-100 text-red-800',
     // cancelled: 'bg-red-100 text-red-800',
 };
 
@@ -22,7 +23,7 @@ const statusColors = {
 const MeetingCard = ({ meeting, currentUserTimeZone }: { meeting: BookedSlotsTypes, currentUserTimeZone: string }) => {
     const dispatch = useAppDispatch();
 
-    const isJoinEnabled = meeting.status === 'ongoing';
+    const isJoinEnabled = meeting.status === RegisterSlotStatus.Ongoing;
     const formattedMeetingDate = formateSlotMeetingDate(convertDateTimeBetweenTimeZones(currentUserTimeZone!, meeting.timeZone, meeting.meetingDate!, meeting.durationFrom));
 
 
@@ -83,7 +84,7 @@ const MeetingCard = ({ meeting, currentUserTimeZone }: { meeting: BookedSlotsTyp
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete
                     </button>
-                    <JoinMeeting isJoinEnabled={isJoinEnabled} />
+                    <JoinMeeting isJoinEnabled={isJoinEnabled} meetingId={meeting._id} />
                 </div>
 
             </div>

@@ -1,12 +1,13 @@
 import ConnectDB from '@/config/ConnectDB';
 import NotificationsModel, { INotificationType } from '@/models/NotificationsModel';
 import SlotModel, { ISlot } from '@/models/SlotModel';
-import UserModel from '@/models/UserModel';
+import UserModel, { IUserFollowInfo } from '@/models/UserModel';
 import { RegisterSlotStatus } from '@/types/client-types';
 import { SocketTriggerTypes } from '@/utils/constants';
 import { getUserIdFromRequest } from '@/utils/server/getUserFromToken';
 import { NextRequest, NextResponse } from 'next/server';
 import { triggerSocketEvent } from '@/utils/socket/triggerSocketEvent';
+import getNotificationExpiryDate from '@/utils/server/getNotificationExpiryDate';
 
 export async function GET(req: NextRequest) {
     try {
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
                 ownerId: userId,
             });
 
+            if (!newSlot) {
+                return NextResponse.json({ message: "Failed to create slot" }, { status: 500 });
+            }
+
             // Update user's registeredSlots
             await UserModel.findByIdAndUpdate(userId, {
                 $push: { registeredSlots: newSlot._id },
@@ -93,13 +98,14 @@ export async function POST(req: NextRequest) {
                 isRead: false,
                 isClicked: false,
                 createdAt: now,
-                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
+                expiresAt: getNotificationExpiryDate(30), // 30 days
             };
 
             // ? Send notification to the followers.
             if (user?.followers?.length) {
                 await Promise.all(
-                    user.followers.map(async (followerId: string) => {
+                    user.followers.map(async (follower: IUserFollowInfo) => {
+                        const followerId = follower.userId.toString();
                         const notification = { ...baseNotification, receiver: followerId };
                         const notificationDoc = new NotificationsModel(notification);
                         const saved = await notificationDoc.save();
@@ -129,12 +135,12 @@ export async function POST(req: NextRequest) {
             // ?  Send update notification of meeting slot to the user's who booked the meeting
         } else if (type === "update") {
 
-            const existingSlot = await SlotModel.findOne({ _id: data._id, ownerId: userId });
+            const existingSlot = await SlotModel.findOne({ _id: rawData._id, ownerId: userId });
             if (!existingSlot) {
                 return NextResponse.json({ message: "Slot not found or forbidden" }, { status: 404 });
             }
 
-            const updatedSlot = await SlotModel.findByIdAndUpdate(data._id, data, { new: true });
+            const updatedSlot = await SlotModel.findByIdAndUpdate(rawData._id, data, { new: true });
 
             // Notify booked users (not followers)
             const user = await UserModel.findById(userId).select("image");
@@ -147,7 +153,7 @@ export async function POST(req: NextRequest) {
                 isRead: false,
                 isClicked: false,
                 createdAt: now,
-                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
+                expiresAt: getNotificationExpiryDate(30), // 30 days
             };
 
             // ? Send notifications to the booked users
@@ -160,14 +166,14 @@ export async function POST(req: NextRequest) {
                         // ? Incrementing count of new notification by 1+ for each user's who booked the meeting slot
                         await UserModel.findByIdAndUpdate(bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true });
 
-                        // ! Emit a notification to the followers about the meeting slot      
+                        // ! Emit a notification to booked users about the updated slot
                         triggerSocketEvent({
                             userId: bookedUserId.toString(),
                             type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
                             notificationData: {
                                 ...notification,
-                                _id: saved._id,
-                                slot: updatedSlot._id,
+                                _id: saved._id.toString(),
+                                slot: updatedSlot._id.toString(),
                                 image: user?.image,
                             },
                         });
@@ -228,7 +234,7 @@ export async function DELETE(req: NextRequest) {
         // * Remove the deleted slot from all users' bookedSlots
         await UserModel.updateMany(
             { 'bookedSlots.slotId': slotId },
-            { $pull: { bookedSlots: { slotId: slotId } } }
+            { $pull: { bookedSlots: { slotId } } }
         );
 
         // ? If meeting status is upcoming, that means the meeting is still valid and have to send notification to the user's who booked this meeting slot.
@@ -238,13 +244,12 @@ export async function DELETE(req: NextRequest) {
             const now = new Date();
             const sendNewNotification = {
                 type: INotificationType.SLOT_DELETED,
-                sender: userId, // Me - booked a meeting slot
-                receiver: slot.ownerId, // The user who booked this meeting slot, will be the receiver of notification
+                sender: userId, // Me - Was created a meeting slot.
                 message: `Meeting of ${slot.title} is cancelled.`,
                 isRead: false,
                 isClicked: false,
                 createdAt: now,
-                expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
+                expiresAt: getNotificationExpiryDate(30), // 30 days
             };
 
             // * Executes only if anyone booked this meeting 
@@ -252,7 +257,7 @@ export async function DELETE(req: NextRequest) {
                 await Promise.all(
                     slot.bookedUsers.map(async (bookedUserId: string) => {
                         // ! Notification block
-                        const notificationData = { ...sendNewNotification, receiver: bookedUserId };
+                        const notificationData = { ...sendNewNotification, receiver: bookedUserId.toString() }; // * The user who booked this slot
                         const notificationDoc = new NotificationsModel(notificationData);
                         const savedNotification = await notificationDoc.save();
 

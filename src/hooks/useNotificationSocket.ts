@@ -1,8 +1,9 @@
 "use client";
 
 import ShadcnToast from "@/components/global-ui/toastify-toaster/ShadcnToast";
+import { updateBookedMeetingStatus } from "@/lib/features/booked-meetings/bookedSlice";
 import { updateSlotBookedUsers } from "@/lib/features/news-feed/newsFeedSlice";
-import { updateSlotStatus } from "@/lib/features/Slots/SlotSlice";
+import { decreaseBookedUsers, increaseBookedUsers, updateSlotStatus } from "@/lib/features/Slots/SlotSlice";
 import { addSingleNotification, incrementNotificationCount } from "@/lib/features/users/userSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RegisterSlotStatus } from "@/types/client-types";
@@ -41,6 +42,19 @@ const useNotificationSocket = () => {
                     }
                 });
 
+
+                socket.on(SocketTriggerTypes.MEETING_STARTED, (data) => {
+                    const isSenderDisabled = user?.disabledNotificationUsers?.includes(data.notificationData.sender);
+                    const { slot } = data.notificationData;
+                    if (!isSenderDisabled) {
+                        dispatch(addSingleNotification(data.notificationData)); // ? Adding new notification
+                        dispatch(incrementNotificationCount()); // ? incrementing number of unseen new notifications
+                        ShadcnToast('New notification arrived!');
+                        console.log("*** Received New Notification ***");
+                    }
+                    dispatch(updateBookedMeetingStatus({ slotId: slot as string, newStatus: RegisterSlotStatus.Ongoing }));
+                });
+
                 socket.on(SocketTriggerTypes.USER_SLOT_BOOKED, (data) => {
                     dispatch(updateSlotBookedUsers({
                         userId: data.sender as string,
@@ -48,7 +62,21 @@ const useNotificationSocket = () => {
                         type: NotificationType.SLOT_BOOKED,
                     }));
                 });
+                socket.on(SocketTriggerTypes.INCREASE_BOOKED_USER, (data) => {
+                    dispatch(increaseBookedUsers({
+                        sloId: data.notificationData.slotId,
+                        newBookedUserId: data.notificationData.newBookedUserId
+                    }));
+                });
 
+
+
+                socket.on(SocketTriggerTypes.DECREASE_BOOKED_USER, (data) => {
+                    dispatch(decreaseBookedUsers({
+                        sloId: data.notificationData.slotId,
+                        bookedUserId: data.notificationData.bookedUserId
+                    }));
+                });
                 socket.on(SocketTriggerTypes.USER_SLOT_UNBOOKED, (data) => {
                     dispatch(updateSlotBookedUsers({
                         userId: data.sender as string,
@@ -79,11 +107,11 @@ const useNotificationSocket = () => {
         return () => {
             if (socketRef.current) {
                 socketRef.current.disconnect();
-                console.log("🛑 Socket disconnected");
+                console.log("Socket disconnected");
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?._id]);
+    }, [user?._id,]);
 
 };
 

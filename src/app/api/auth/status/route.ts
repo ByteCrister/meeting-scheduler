@@ -80,9 +80,8 @@ export async function PUT(req: NextRequest) {
     try {
         await ConnectDB();
 
-        const searchParams = req.nextUrl.searchParams;
-        const field = searchParams.get('field');
-        const value = searchParams.get('value');
+        const body = await req.json();
+        const { field, value } = body;
 
         if (!field || !value) {
             return NextResponse.json({ message: 'Missing query parameters' }, { status: 400 });

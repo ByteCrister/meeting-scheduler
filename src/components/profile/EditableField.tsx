@@ -5,11 +5,6 @@ import { useState } from 'react';
 import LoadingSpinner from '../global-ui/ui-component/LoadingSpinner';
 import Profession from './Profession';
 import TimeZone from './TimeZone';
-import { useAppDispatch } from '@/lib/hooks';
-import { updateUserInfo } from '@/lib/features/users/userSlice';
-import apiService from '@/utils/client/api/api-services';
-import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
-import { APISendUpdatedTimeZoneEmail } from '@/utils/client/api/api-send-email';
 
 const EditableField = ({
     label,
@@ -17,19 +12,19 @@ const EditableField = ({
     // onUpdate,
     field,
     isLoading,
-    handleLoadingChange
+    handleLoadingChange,
+    updateProfileField
 }: {
     label: string;
     value: string;
     isLoading: boolean;
     field: "title" | "timeZone" | "username" | "image" | "profession";
-    // onUpdate: (value: string) => void;
-    handleLoadingChange: (isLoading: boolean) => void
+    handleLoadingChange: (isLoading: boolean) => void;
+    updateProfileField: (field: ("title" | "timeZone" | "username" | "image" | "profession"), value: string) => Promise<void>
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [tempValue, setTempValue] = useState(value ?? '');
     const [hovered, setHovered] = useState(false);
-    const dispatch = useAppDispatch();
 
     const handleSave = () => {
         handleLoadingChange(true);
@@ -37,21 +32,6 @@ const EditableField = ({
         setIsEditing(false);
         handleLoadingChange(false);
 
-    };
-
-    // * Update fields
-    const updateProfileField = async (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
-        const responseData = await apiService.put(
-            `/api/auth/status?field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`
-        );
-        if (responseData.success) {
-            dispatch(updateUserInfo({ field: field, updatedValue: value }));
-            ShowToaster(responseData.message, 'success');
-            // ? executes only if the field is timeZone and updated timeZone is not same as the previous timeZone
-            if (field === 'timeZone' && value !== responseData.previous) {
-                await APISendUpdatedTimeZoneEmail({ updatedValue: value, previousValue: responseData.previous })
-            }
-        }
     };
 
     return (

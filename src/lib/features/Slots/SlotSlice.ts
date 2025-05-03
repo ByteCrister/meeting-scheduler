@@ -53,7 +53,17 @@ const slotSlice = createSlice({
         deleteSlot: (state, action: PayloadAction<string>) => {
             state.Store = state.Store.filter((item) => item._id !== action.payload);
             state.tempStore = state.tempStore.filter((item) => item._id !== action.payload);
-        }
+        },
+
+        // * Control booked users
+        increaseBookedUsers: (state, action: PayloadAction<{ newBookedUserId: string, sloId: string }>) => {
+            state.Store = state.Store.map((Slot) => Slot._id === action.payload.sloId ? { ...Slot, bookedUsers: [...Slot.bookedUsers, action.payload.newBookedUserId] } : Slot);
+            state.tempStore = state.tempStore.map((Slot) => Slot._id === action.payload.sloId ? { ...Slot, bookedUsers: [...Slot.bookedUsers, action.payload.newBookedUserId] } : Slot);
+        },
+        decreaseBookedUsers: (state, action: PayloadAction<{ bookedUserId: string, sloId: string }>) => {
+            state.Store = state.Store.map((Slot) => Slot._id === action.payload.sloId ? { ...Slot, bookedUsers: Slot.bookedUsers.filter(item => item !== action.payload.bookedUserId) } : Slot);
+            state.tempStore = state.tempStore.map((Slot) => Slot._id === action.payload.sloId ? { ...Slot, bookedUsers: Slot.bookedUsers.filter(item => item !== action.payload.bookedUserId) } : Slot);
+        },
     }
 });
 
@@ -64,7 +74,9 @@ export const {
     sortTempSlots,
     addNewSlot,
     deleteSlot,
-    setCurrentPage
+    setCurrentPage,
+    increaseBookedUsers,
+    decreaseBookedUsers
 } = slotSlice.actions;
 
 export default slotSlice;

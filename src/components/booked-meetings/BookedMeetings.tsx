@@ -29,23 +29,27 @@ export default function BookedMeetings() {
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsFetching(true);
-      const responseData = await apiService.get('/api/user-slot-booking');
+      try {
+        setIsFetching(true);
+        const responseData = await apiService.get('/api/user-slot-booking');
 
-      if (responseData.success) {
-        const data = [...responseData.data];
+        if (responseData.success) {
+          const data = [...responseData.data];
 
-        if (searchedBookSlot) {
-          const searchedIndex = data.findIndex(item => item._id === searchedBookSlot);
-
-          if (searchedIndex !== -1) {
-            const [searchedSlot] = data.splice(searchedIndex, 1);
-            data.unshift(searchedSlot);
+          const index = data.findIndex(item => item._id === searchedBookSlot);
+          if (index !== -1) {
+            const [searched] = data.splice(index, 1);
+            data.unshift(searched);
           }
+
+          dispatch(addBookedMeetings(data));
         }
-        dispatch(addBookedMeetings(data));
+      } catch (err) {
+        console.error('Failed to fetch booked meetings:', err);
+      } finally {
+        setIsFetching(false);
       }
-      setIsFetching(false);
+
     };
     fetchData();
   }, [dispatch, searchedBookSlot]);
@@ -70,7 +74,6 @@ export default function BookedMeetings() {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    console.log(e.target.value);
     SearchBookedMeetings(e.target.value);
   };
 

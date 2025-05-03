@@ -8,6 +8,10 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { handleImage } from '@/utils/client/others/image-handler';
 import ImageCropDialog from '../global-ui/dialoges/ImageCropDialog';
 import LoadingUIBlackBullfrog from '../global-ui/ui-component/LoadingUIBlackBullfrog';
+import apiService from '@/utils/client/api/api-services';
+import { updateUserInfo } from '@/lib/features/users/userSlice';
+import ShowToaster from '../global-ui/toastify-toaster/show-toaster';
+import { APISendUpdatedTimeZoneEmail } from '@/utils/client/api/api-send-email';
 
 
 // interface ProfileData {
@@ -81,6 +85,7 @@ export default function ProfileComponent() {
 
   const handleCroppedImage = (croppedImage: string) => {
     setImagePreview(croppedImage);
+    updateProfileField('image', croppedImage);
   };
 
 
@@ -91,6 +96,19 @@ export default function ProfileComponent() {
       ...prev,
       [field]: isLoading
     }));
+  };
+
+  // * Update fields
+  const updateProfileField = async (field: ('title' | 'timeZone' | 'username' | 'image' | 'profession'), value: string) => {
+    const responseData = await apiService.put(`/api/auth/status`, { field, value, });
+    if (responseData.success) {
+      dispatch(updateUserInfo({ field: field, updatedValue: value }));
+      ShowToaster(responseData.message, 'success');
+      // ? executes only if the field is timeZone and updated timeZone is not same as the previous timeZone
+      if (field === 'timeZone' && value !== responseData.previous) {
+        await APISendUpdatedTimeZoneEmail({ updatedValue: value, previousValue: responseData.previous })
+      }
+    }
   };
 
   return (
@@ -111,31 +129,35 @@ export default function ProfileComponent() {
             <div className="space-y-4">
               <EditableField
                 label="Name"
+                field={'username'}
                 value={user.username}
                 isLoading={isLoading.username}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('username', isLoading)}
-                field={'username'}
+                updateProfileField={updateProfileField}
               />
               <EditableField
                 label="Title"
+                field={'title'}
                 value={user.title}
                 isLoading={isLoading.title}
-                field={'title'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('title', isLoading)}
+                updateProfileField={updateProfileField}
               />
               <EditableField
                 label="Profession"
+                field={'profession'}
                 value={user.profession}
                 isLoading={isLoading.profession}
-                field={'profession'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('profession', isLoading)}
+                updateProfileField={updateProfileField}
               />
               <EditableField
                 label="Timezone"
+                field={'timeZone'}
                 value={user.timeZone}
                 isLoading={isLoading.timeZone}
-                field={'timeZone'}
                 handleLoadingChange={(isLoading: boolean) => handleLoadingChange('timeZone', isLoading)}
+                updateProfileField={updateProfileField}
               />
             </div>
 

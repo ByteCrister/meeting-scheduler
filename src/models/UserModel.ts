@@ -123,6 +123,7 @@ const UserSchema = new Schema<IUsers>(
                     type: mongoose.Schema.Types.ObjectId,
                     ref: "slots",
                     required: true,
+                    index: true
                 },
                 status: {
                     type: String,

@@ -6,6 +6,10 @@ import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from 'date-fns';
 import SlotModel from "@/models/SlotModel";
+import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
+import { SocketTriggerTypes } from "@/utils/constants";
+import NotificationsModel, { INotificationType } from "@/models/NotificationsModel";
+import UserModel from "@/models/UserModel";
 
 export interface IParticipant {
     userId: mongoose.Types.ObjectId | string;
@@ -50,6 +54,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'meetingId is required' }, { status: 400 });
         }
 
+        const user = await UserModel.findById(userId).select('image');
+
         // Get the slot data to calculate start/end times
         const slot = await SlotModel.findById(meetingId);
         if (!slot) {
@@ -86,12 +92,39 @@ export async function POST(req: NextRequest) {
             },
         });
 
+        // ! Notification block
+        // Notify to all the booked user's of this slot
+        const now = new Date();
+        const sendNewNotification = {
+            type: INotificationType.MEETING_STARTED,
+            sender: userId.toString(), // Me - as a host started a meeting
+            image: user.image,
+            slot: meetingId,
+            message: "The Host just started the meeting!",
+            isRead: false,
+            isClicked: false,
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        };
+
+        for (const bookedUserId of slot.bookedUsers) {
+            const notificationDoc = new NotificationsModel({ ...sendNewNotification, receiver: bookedUserId });
+            const savedNotification = await notificationDoc.save();
+            // ? Incrementing count of new notification by +1 to the user who booked this meeting
+            await UserModel.findByIdAndUpdate(bookedUserId, { $inc: { countOfNotifications: 1 } }, { new: true });
+            triggerSocketEvent({
+                userId: userId,
+                type: SocketTriggerTypes.MEETING_STARTED,
+                notificationData: { ...sendNewNotification, receiver: bookedUserId, _id: savedNotification._id },
+            });
+        }
+
         return NextResponse.json({ success: true, videoCall: newCall }, { status: 201 });
     } catch (error) {
         console.log('[VIDEO_CALL_POST_ERROR]', error);
         return NextResponse.json({ message: 'Failed to create video call' }, { status: 500 });
     }
-}
+};
 
 
 // ? update states of video meeting

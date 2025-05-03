@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// ? Leaving from  a video meeting call
+// ? Leaving from a video meeting call or deleting it if host
 export async function DELETE(req: NextRequest) {
     try {
         await ConnectDB();
@@ -65,16 +65,31 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ message: 'Missing meetingId or unauthorized' }, { status: 400 });
         }
 
-        const updateResult = await VideoCallModel.updateOne(
-            { meetingId },
-            { $pull: { participants: { userId } } }
-        );
+        const videoCall = await VideoCallModel.findOne({ meetingId });
 
-        if (updateResult.modifiedCount === 0) {
-            return NextResponse.json({ message: 'User not found in participants or meeting not found' }, { status: 404 });
+        if (!videoCall) {
+            return NextResponse.json({ message: 'Meeting not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ message: 'Left the call successfully' }, { status: 200 });
+        const isHost = String(videoCall.hostId) === String(userId);
+
+        if (isHost) {
+            // If the user is the host, delete the entire video call document
+            await VideoCallModel.deleteOne({ meetingId });
+            return NextResponse.json({ message: 'Video call deleted by host' }, { status: 200 });
+        } else {
+            // If the user is a participant, remove them from the participants array
+            const updateResult = await VideoCallModel.updateOne(
+                { meetingId },
+                { $pull: { participants: { userId } } }
+            );
+
+            if (updateResult.modifiedCount === 0) {
+                return NextResponse.json({ message: 'User not found in participants or update failed' }, { status: 404 });
+            }
+
+            return NextResponse.json({ message: 'Left the call successfully' }, { status: 200 });
+        }
     } catch (error) {
         console.log('[LEAVE_VIDEO_CALL_ERROR]', error);
         return NextResponse.json({ message: 'Server error' }, { status: 500 });

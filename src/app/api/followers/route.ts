@@ -1,5 +1,5 @@
 import ConnectDB from "@/config/ConnectDB";
-import UserModel from "@/models/UserModel";
+import UserModel, { IUserFollowInfo } from "@/models/UserModel";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -74,27 +74,43 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ message: "You can't follow yourself" }, { status: 400 });
         }
 
-        const currentUser = await UserModel.findById(currentUserId);
-        const targetUser = await UserModel.findById(followerId);
+        // Use findOne to check if both users exist at once
+        const [currentUser, targetUser] = await Promise.all([
+            UserModel.findById(currentUserId).select("followers"),
+            UserModel.findById(followerId).select("following")
+        ]);
+
 
         if (!currentUser || !targetUser) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
         // Prevent duplicate following
-        const alreadyFollowing = currentUser.following.some((f: { userId: string }) => f.userId.toString() === followerId);
-        if (alreadyFollowing) {
-            return NextResponse.json({ message: "Already following" }, { status: 400 });
+        // Check if the current user is already following the target user
+        if (currentUser.followers.some((f: IUserFollowInfo) => f.userId.toString() === followerId.toString())) {
+            return NextResponse.json({ message: "This user is already in your followers list" }, { status: 400 });
         }
+
 
         // Add to following/followers
         currentUser.followers.push({ userId: followerId, startedFrom: new Date() });
         targetUser.following.push({ userId: currentUserId, startedFrom: new Date() });
 
-        await currentUser.save();
-        await targetUser.save();
+        // Save both users efficiently in parallel
+        await Promise.all([currentUser.save(), targetUser.save()]);
 
-        return NextResponse.json({ message: "Successfully follower returned.", data: { id: targetUser._id, title: targetUser.title, image: targetUser.image, isRemoved: false, idLoading: false }, success: true }, { status: 200 });
+        // Prepare and return the success response
+        return NextResponse.json({
+            message: "Successfully restored the follower.",
+            data: {
+                id: targetUser._id,
+                title: targetUser.title,
+                image: targetUser.image,
+                isRemoved: false,
+                idLoading: false,
+            },
+            success: true
+        }, { status: 200 });
 
     } catch (err) {
         console.error(err);
@@ -127,22 +143,24 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        // Atomically remove each other from the relevant lists
-        await Promise.all([
-            UserModel.updateOne(
+
+        // Use findOneAndUpdate for atomic operation to remove the follower from both users
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            UserModel.findOneAndUpdate(
                 { _id: currentUserId },
-                { $pull: { followers: { userId: followerId } } }
+                { $pull: { followers: { userId: followerId } } },
+                { new: true } // Return updated document
             ),
-            UserModel.updateOne(
+            UserModel.findOneAndUpdate(
                 { _id: followerId },
-                { $pull: { following: { userId: currentUserId } } }
+                { $pull: { following: { userId: currentUserId } } },
+                { new: true } // Return updated document
             ),
-            // NotificationsModel.deleteMany({
-            //     sender: followerId,
-            //     receiver: currentUserId,
-            //     type: INotificationType.FOLLOW,
-            // }),
         ]);
+
+        if (!updatedCurrentUser || !updatedTargetUser) {
+            return NextResponse.json({ message: "User not found" }, { status: 404 });
+        }
 
         return NextResponse.json({ message: "Follower removed successfully", success: true }, { status: 200 });
 

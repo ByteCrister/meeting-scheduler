@@ -1,7 +1,6 @@
 
-import { BookedSlotsTypes } from "@/types/client-types";
+import { BookedSlotsTypes, RegisterSlotStatus } from "@/types/client-types";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { isEqual } from "lodash";
 
 interface bookedSliceInitialType {
     Store: BookedSlotsTypes[];
@@ -19,13 +18,9 @@ const meetingSlice = createSlice({
     name: 'meetingSlice',
     initialState: initialState,
     reducers: {
-        // * Manage booked meeting slots
         addBookedMeetings: (state, action: PayloadAction<BookedSlotsTypes[]>) => {
-            const isSame = isEqual(state.Store, action.payload);
-            if (!isSame) {
-                state.Store = [...state.Store, ...action.payload];
-                state.bookedMeetings = [...state.bookedMeetings, ...action.payload];
-            }
+            state.Store = action.payload;
+            state.bookedMeetings = action.payload;
         },
         addSingleBookedMeeting: (state, action: PayloadAction<BookedSlotsTypes>) => {
             state.Store.unshift(action.payload);
@@ -33,6 +28,14 @@ const meetingSlice = createSlice({
         },
         setSortedBookedMeetings: (state, action: PayloadAction<BookedSlotsTypes[]>) => {
             state.bookedMeetings = [...action.payload];
+        },
+        deleteBookedMeeting: (state, action: PayloadAction<string>) => {
+            state.Store = state.Store.filter((item) => item._id !== action.payload);
+            state.bookedMeetings = state.bookedMeetings.filter((item) => item._id !== action.payload);
+        },
+        updateBookedMeetingStatus: (state, action: PayloadAction<{ slotId: string, newStatus: RegisterSlotStatus }>) => {
+            state.Store = state.Store.map((item) => item._id === action.payload.slotId ? { ...item, status: action.payload.newStatus } : item);
+            state.bookedMeetings = state.bookedMeetings.map((item) => item._id === action.payload.slotId ? { ...item, status: action.payload.newStatus } : item);
         },
 
         // * Update current page
@@ -47,6 +50,8 @@ export const {
     addBookedMeetings,
     addSingleBookedMeeting,
     setSortedBookedMeetings,
-    setBookedMeetingCurrentPage
+    deleteBookedMeeting,
+    updateBookedMeetingStatus,
+    setBookedMeetingCurrentPage,
 } = meetingSlice.actions;
 export default meetingSlice;

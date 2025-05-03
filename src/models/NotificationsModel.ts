@@ -2,13 +2,14 @@ import mongoose, { Schema } from "mongoose";
 
 export enum INotificationType {
     FOLLOW = "FOLLOW",
+    RECEIVED_NOTIFICATION = "RECEIVED_NOTIFICATION",
     SLOT_CREATED = "SLOT_CREATED",
     SLOT_BOOKED = "SLOT_BOOKED",
     SLOT_UNBOOKED = "SLOT_UNBOOKED",
     SLOT_UPDATED = "SLOT_UPDATED",
     SLOT_DELETED = "SLOT_DELETED",
     MEETING_TIME_STARTED = "MEETING_TIME_STARTED",
-    START_MEETING = "START_MEETING",
+    MEETING_STARTED = "MEETING_STARTED",
 }
 
 export interface INotification {
