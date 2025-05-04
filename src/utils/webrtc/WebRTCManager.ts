@@ -9,6 +9,7 @@ export class WebRTCManager {
     private userId: string;
     private onStreamChange: ((userId: string, stream: MediaStream) => void) | null;
     private onConnectionStateChange: ((userId: string, state: RTCPeerConnectionState) => void) | null;
+    private onError: ((error: Error) => void) | null;
 
     constructor(socket: Socket, roomId: string, userId: string) {
         this.peerConnections = new Map();
@@ -19,6 +20,7 @@ export class WebRTCManager {
         this.userId = userId;
         this.onStreamChange = null;
         this.onConnectionStateChange = null;
+        this.onError = null;
     }
 
     setStreamChangeCallback(callback: (userId: string, stream: MediaStream) => void): void {
@@ -29,13 +31,40 @@ export class WebRTCManager {
         this.onConnectionStateChange = callback;
     }
 
+    setErrorCallback(callback: (error: Error) => void): void {
+        this.onError = callback;
+    }
+
+    private async checkMediaPermissions(): Promise<{ audio: boolean; video: boolean }> {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const hasAudio = devices.some(device => device.kind === 'audioinput');
+            const hasVideo = devices.some(device => device.kind === 'videoinput');
+            return { audio: hasAudio, video: hasVideo };
+        } catch (error) {
+            console.error('Error checking media devices:', error);
+            throw new Error('Failed to check media device permissions');
+        }
+    }
+
     async initializeLocalStream(video: boolean = true, audio: boolean = true): Promise<MediaStream> {
         try {
+            // Check permissions first
+            const { audio: hasAudio, video: hasVideo } = await this.checkMediaPermissions();
+            
+            if (audio && !hasAudio) {
+                throw new Error('No audio input device found');
+            }
+            if (video && !hasVideo) {
+                throw new Error('No video input device found');
+            }
+
             const constraints: MediaStreamConstraints = {
                 video: video ? {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
                     frameRate: { ideal: 30 },
+                    facingMode: 'user',
                 } : false,
                 audio: audio ? {
                     echoCancellation: true,
@@ -44,11 +73,21 @@ export class WebRTCManager {
                 } : false,
             };
 
-            this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            // Request permissions
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Clean up existing stream if any
+            if (this.localStream) {
+                this.localStream.getTracks().forEach(track => track.stop());
+            }
+
+            this.localStream = stream;
             return this.localStream;
         } catch (error) {
             console.error('Error accessing media devices:', error);
-            throw new Error('Failed to access camera/microphone. Please check your permissions and device connections.');
+            const errorMessage = error instanceof Error ? error.message : 'Failed to access camera/microphone';
+            this.onError?.(new Error(errorMessage));
+            throw new Error(errorMessage);
         }
     }
 
@@ -66,45 +105,57 @@ export class WebRTCManager {
             iceCandidatePoolSize: 10,
         };
 
-        peerConnection = new RTCPeerConnection(configuration);
-        this.peerConnections.set(userId, peerConnection);
+        try {
+            peerConnection = new RTCPeerConnection(configuration);
+            this.peerConnections.set(userId, peerConnection);
 
-        if (this.localStream) {
-            this.localStream.getTracks().forEach((track) => {
-                peerConnection!.addTrack(track, this.localStream!);
-            });
-        } else {
-            console.warn('Local stream not initialized before creating peer connection.');
-        }
-
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                this.socket.emit('ice-candidate', {
-                    roomId: this.roomId,
-                    userId,
-                    candidate: event.candidate,
+            if (this.localStream) {
+                this.localStream.getTracks().forEach((track) => {
+                    try {
+                        peerConnection!.addTrack(track, this.localStream!);
+                    } catch (error) {
+                        console.error(`Error adding track to peer connection: ${error}`);
+                        this.onError?.(new Error('Failed to add media track to connection'));
+                    }
                 });
             }
-        };
 
-        peerConnection.onconnectionstatechange = () => {
-            if (this.onConnectionStateChange) {
-                this.onConnectionStateChange(userId, peerConnection!.connectionState);
-            }
-        };
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    this.socket.emit('ice-candidate', {
+                        roomId: this.roomId,
+                        userId,
+                        candidate: event.candidate,
+                    });
+                }
+            };
 
-        peerConnection.ontrack = (event) => {
-            const remoteStream = event.streams[0];
-            if (this.onStreamChange) {
-                this.onStreamChange(userId, remoteStream);
-            }
-        };
+            peerConnection.onconnectionstatechange = () => {
+                if (this.onConnectionStateChange) {
+                    this.onConnectionStateChange(userId, peerConnection!.connectionState);
+                }
+            };
 
-        peerConnection.oniceconnectionstatechange = () => {
-            console.log(`ICE connection state for ${userId}:`, peerConnection!.iceConnectionState);
-        };
+            peerConnection.ontrack = (event) => {
+                const remoteStream = event.streams[0];
+                if (this.onStreamChange) {
+                    this.onStreamChange(userId, remoteStream);
+                }
+            };
 
-        return peerConnection;
+            peerConnection.oniceconnectionstatechange = () => {
+                console.log(`ICE connection state for ${userId}:`, peerConnection!.iceConnectionState);
+                if (peerConnection!.iceConnectionState === 'failed') {
+                    this.onError?.(new Error('ICE connection failed'));
+                }
+            };
+
+            return peerConnection;
+        } catch (error) {
+            console.error('Error creating peer connection:', error);
+            this.onError?.(new Error('Failed to create peer connection'));
+            throw error;
+        }
     }
 
     async createOffer(userId: string): Promise<RTCSessionDescriptionInit> {
@@ -143,15 +194,31 @@ export class WebRTCManager {
     }
 
     toggleAudio(enabled: boolean): void {
-        this.localStream?.getAudioTracks().forEach((track) => {
-            track.enabled = enabled;
-        });
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            this.localStream.getAudioTracks().forEach((track) => {
+                track.enabled = enabled;
+            });
+        } catch (error) {
+            console.error('Error toggling audio:', error);
+            this.onError?.(new Error('Failed to toggle audio'));
+        }
     }
 
     toggleVideo(enabled: boolean): void {
-        this.localStream?.getVideoTracks().forEach((track) => {
-            track.enabled = enabled;
-        });
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            this.localStream.getVideoTracks().forEach((track) => {
+                track.enabled = enabled;
+            });
+        } catch (error) {
+            console.error('Error toggling video:', error);
+            this.onError?.(new Error('Failed to toggle video'));
+        }
     }
 
     async startScreenShare(): Promise<MediaStream> {
@@ -202,6 +269,38 @@ export class WebRTCManager {
                     });
                 }
             }
+        }
+    }
+
+    async setAudioDevice(deviceId: string): Promise<void> {
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                await audioTrack.applyConstraints({ deviceId: { exact: deviceId } });
+            }
+        } catch (error) {
+            console.error('Error setting audio device:', error);
+            this.onError?.(new Error('Failed to set audio device'));
+            throw error;
+        }
+    }
+
+    async setVideoDevice(deviceId: string): Promise<void> {
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                await videoTrack.applyConstraints({ deviceId: { exact: deviceId } });
+            }
+        } catch (error) {
+            console.error('Error setting video device:', error);
+            this.onError?.(new Error('Failed to set video device'));
+            throw error;
         }
     }
 

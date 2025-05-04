@@ -162,15 +162,15 @@ export async function POST(req: NextRequest,) {
 
             // * Notify all followers about the new booking
             await Promise.all(
-                followersToNotify.forEach(async (follower: IUserFollowInfo) => {
+                followersToNotify.map(async (follower: IUserFollowInfo) => {
                     const followerId = follower.userId;
                     triggerSocketEvent({
                         userId: followerId.toString(),
                         type: SocketTriggerTypes.USER_SLOT_BOOKED,
                         notificationData: userSlotBookedData
-                    })
+                    });
                 })
-            )
+            );
         };
 
         // ? Emit real-time update on the booked users count for the owner
@@ -247,7 +247,7 @@ export async function DELETE(req: NextRequest) {
                 };
 
                 await Promise.all(
-                    followersToNotify.forEach((follower: IUserFollowInfo) => {
+                    followersToNotify.map((follower: IUserFollowInfo) => {
                         const followerId = follower.userId;
                         // ! Emit a notification to the follower's of the slot owner to update new booking count in meeting feed's      
                         triggerSocketEvent({

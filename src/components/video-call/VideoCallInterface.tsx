@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VideoCallService } from '../../services/VideoCallService';
 import { VideoGrid } from './VideoGrid';
 import { Controls } from './Controls';
@@ -6,7 +6,7 @@ import { ParticipantsPanel } from './ParticipantsPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { ChatPanel } from './ChatPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import {
     addMessage,
@@ -18,7 +18,7 @@ import {
     setScreenSharing,
     setVideoOn,
     updateStream
-} from '@/lib/features/video-call-slice/videoCallSlice ';
+} from '@/lib/features/video-call-slice/videoCallSlice';
 import { updateVideoCall } from '@/utils/client/api/api-video-meeting-call';
 
 interface VideoCallInterfaceProps {
@@ -42,12 +42,14 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
         messages,
     } = useAppSelector((state) => state.videoCallStore);
 
-    const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = React.useState(false);
-    const [isSettingsPanelOpen, setIsSettingsPanelOpen] = React.useState(false);
-    const [isChatPanelOpen, setIsChatPanelOpen] = React.useState(false);
-    const [error, setError] = React.useState<string | null>(null);
+    const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
+    const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+    const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isControlsVisible, setIsControlsVisible] = useState(true);
 
     const videoCallService = useRef<VideoCallService | null>(null);
+    const controlsTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const initializeCall = async () => {
@@ -79,6 +81,10 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                     }));
                 };
 
+                videoCallService.current.onError = (error) => {
+                    setError(error.message);
+                };
+
                 // Initialize local stream
                 await videoCallService.current.initializeLocalStream(true, true);
 
@@ -89,7 +95,8 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                 dispatch(setMuted(false));
                 dispatch(setVideoOn(true));
                 dispatch(setScreenSharing(false));
-            } catch {
+            } catch (error) {
+                console.log(error)
                 setError('Failed to initialize video call. Please try again.');
                 setTimeout(() => {
                     onEndCall();
@@ -107,26 +114,33 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
         };
     }, [meetingId, userId, onEndCall, dispatch]);
 
+    const handleMouseMove = () => {
+        setIsControlsVisible(true);
+        if (controlsTimeout.current) {
+            clearTimeout(controlsTimeout.current);
+        }
+        controlsTimeout.current = setTimeout(() => {
+            setIsControlsVisible(false);
+        }, 3000);
+    };
+
     const handleToggleMute = async () => {
         if (videoCallService.current) {
             try {
                 await videoCallService.current.toggleAudio(!isMuted);
                 dispatch(setMuted(!isMuted));
-
-                // Update video call state via API
                 await updateVideoCall({ meetingId, isMuted: !isMuted });
             } catch {
                 setError('Failed to toggle audio. Please try again.');
             }
         }
     };
+
     const handleToggleVideo = async () => {
         if (videoCallService.current) {
             try {
                 await videoCallService.current.toggleVideo(!isVideoOn);
                 dispatch(setVideoOn(!isVideoOn));
-
-                // Update video call state via API
                 await updateVideoCall({ meetingId, isVideoOn: !isVideoOn });
             } catch {
                 setError('Failed to toggle video. Please try again.');
@@ -143,8 +157,6 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                     await videoCallService.current.stopScreenShare();
                 }
                 dispatch(setScreenSharing(!isScreenSharing));
-
-                // Update video call state via API
                 await updateVideoCall({ meetingId, isScreenSharing: !isScreenSharing });
             } catch {
                 setError('Failed to toggle screen sharing. Please try again.');
@@ -161,8 +173,6 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                     message,
                     timestamp: new Date(),
                 }));
-
-                // Update video call state via API
                 await updateVideoCall({ meetingId, message });
             } catch {
                 setError('Failed to send message. Please try again.');
@@ -220,7 +230,10 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
     };
 
     return (
-        <div className="relative w-full h-screen bg-gray-900 text-white overflow-hidden">
+        <div
+            className="relative w-full h-screen bg-gray-900 text-white overflow-hidden"
+            onMouseMove={handleMouseMove}
+        >
             {/* Error Message */}
             <AnimatePresence>
                 {error && (
@@ -230,14 +243,14 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                         exit={{ opacity: 0, y: -20 }}
                         className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50"
                     >
-                        <div className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                        <div className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg">
                             <AlertCircle size={20} />
                             <span>{error}</span>
                             <button
                                 onClick={() => setError(null)}
-                                className="ml-2 hover:text-gray-200"
+                                className="ml-2 hover:text-gray-200 transition-colors"
                             >
-                                ×
+                                <X size={16} />
                             </button>
                         </div>
                     </motion.div>
@@ -253,19 +266,23 @@ export const VideoCallInterface: React.FC<VideoCallInterfaceProps> = ({
                 }}
             />
 
-            <Controls
-                isMuted={isMuted}
-                isVideoOn={isVideoOn}
-                isScreenSharing={isScreenSharing}
-                onToggleMute={handleToggleMute}
-                onToggleVideo={handleToggleVideo}
-                onToggleScreenShare={handleToggleScreenShare}
-                onToggleParticipants={() => setIsParticipantsPanelOpen(!isParticipantsPanelOpen)}
-                onToggleSettings={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
-                onToggleChat={() => setIsChatPanelOpen(!isChatPanelOpen)}
-                onEndCall={handleEndCall}
-                onToggleFullscreen={handleToggleFullscreen}
-            />
+            <AnimatePresence>
+                {isControlsVisible && (
+                    <Controls
+                        isMuted={isMuted}
+                        isVideoOn={isVideoOn}
+                        isScreenSharing={isScreenSharing}
+                        onToggleMute={handleToggleMute}
+                        onToggleVideo={handleToggleVideo}
+                        onToggleScreenShare={handleToggleScreenShare}
+                        onToggleParticipants={() => setIsParticipantsPanelOpen(!isParticipantsPanelOpen)}
+                        onToggleSettings={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+                        onToggleChat={() => setIsChatPanelOpen(!isChatPanelOpen)}
+                        onEndCall={handleEndCall}
+                        onToggleFullscreen={handleToggleFullscreen}
+                    />
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {isParticipantsPanelOpen && (

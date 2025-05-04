@@ -27,6 +27,7 @@ export class VideoCallService {
     public onStreamReceived: ((participantId: string, stream: MediaStream) => void) | null = null;
     public onConnectionQualityChanged: ((participantId: string, quality: 'good' | 'medium' | 'poor') => void) | null = null;
     public onMessageReceived: ((participantId: string, message: string) => void) | null = null;
+    public onError: ((error: Error) => void) | null = null;
 
     constructor(meetingId: string, userId: string) {
         this.meetingId = meetingId;
@@ -34,6 +35,14 @@ export class VideoCallService {
         this.participants = new Map();
         this.socket = this.initializeSocket();
         this.webRTCManager = new WebRTCManager(this.socket, this.meetingId, this.userId);
+        this.setupErrorHandling();
+    }
+
+    private setupErrorHandling(): void {
+        this.webRTCManager.setErrorCallback((error) => {
+            console.error('WebRTC error:', error);
+            this.onError?.(error);
+        });
     }
 
     private initializeSocket(): Socket {
@@ -53,77 +62,118 @@ export class VideoCallService {
         });
 
         socket.on('offer', async (data: { from: string; offer: RTCSessionDescriptionInit }) => {
-            await this.handleOffer(data.from, data.offer);
+            try {
+                await this.handleOffer(data.from, data.offer);
+            } catch (error) {
+                console.error('Error handling offer:', error);
+                this.onError?.(new Error('Failed to handle offer'));
+            }
         });
 
         socket.on('answer', async (data: { from: string; answer: RTCSessionDescriptionInit }) => {
-            await this.handleAnswer(data.from, data.answer);
+            try {
+                await this.handleAnswer(data.from, data.answer);
+            } catch (error) {
+                console.error('Error handling answer:', error);
+                this.onError?.(new Error('Failed to handle answer'));
+            }
         });
 
         socket.on('ice-candidate', async (data: { from: string; candidate: RTCIceCandidateInit }) => {
-            await this.handleIceCandidate(data.from, data.candidate);
+            try {
+                await this.handleIceCandidate(data.from, data.candidate);
+            } catch (error) {
+                console.error('Error handling ICE candidate:', error);
+                this.onError?.(new Error('Failed to handle ICE candidate'));
+            }
         });
 
         socket.on('message', (data: { from: string; message: string }) => {
             this.onMessageReceived?.(data.from, data.message);
         });
 
+        socket.on('error', (error: Error) => {
+            console.error('Socket error:', error);
+            this.onError?.(error);
+        });
+
         return socket;
     }
 
     public async initializeLocalStream(video = true, audio = true): Promise<void> {
-        this.localStream = await this.webRTCManager.initializeLocalStream(video, audio);
-        this.participants.set(this.userId, {
-            userId: this.userId,
-            stream: this.localStream,
-            isMuted: !audio,
-            isVideoOn: video,
-            isScreenSharing: false,
-        });
+        try {
+            this.localStream = await this.webRTCManager.initializeLocalStream(video, audio);
+            this.participants.set(this.userId, {
+                userId: this.userId,
+                stream: this.localStream,
+                isMuted: !audio,
+                isVideoOn: video,
+                isScreenSharing: false,
+            });
+        } catch (error) {
+            console.error('Error initializing local stream:', error);
+            this.onError?.(new Error('Failed to initialize local stream'));
+            throw error;
+        }
     }
 
     public async startCall(): Promise<void> {
-        if (!this.localStream) throw new Error('Local stream not initialized');
-        for (const [userId] of this.participants) {
-            if (userId !== this.userId) {
-                await this.createPeerConnection(userId);
+        if (!this.localStream) {
+            throw new Error('Local stream not initialized');
+        }
+
+        try {
+            for (const [userId] of this.participants) {
+                if (userId !== this.userId) {
+                    await this.createPeerConnection(userId);
+                }
             }
+        } catch (error) {
+            console.error('Error starting call:', error);
+            this.onError?.(new Error('Failed to start call'));
+            throw error;
         }
     }
 
     private async createPeerConnection(userId: string): Promise<void> {
-        const peerConnection = this.webRTCManager.createPeerConnection(userId);
+        try {
+            const peerConnection = this.webRTCManager.createPeerConnection(userId);
 
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                this.socket.emit('ice-candidate', { to: userId, candidate: event.candidate });
-            }
-        };
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    this.socket.emit('ice-candidate', { to: userId, candidate: event.candidate });
+                }
+            };
 
-        peerConnection.ontrack = (event) => {
-            const participant = this.participants.get(userId);
-            if (participant) {
-                participant.stream = event.streams[0];
-                this.participants.set(userId, participant);
-                this.onStreamReceived?.(userId, event.streams[0]);
-            }
-        };
+            peerConnection.ontrack = (event) => {
+                const participant = this.participants.get(userId);
+                if (participant) {
+                    participant.stream = event.streams[0];
+                    this.participants.set(userId, participant);
+                    this.onStreamReceived?.(userId, event.streams[0]);
+                }
+            };
 
-        const intervalId = setInterval(() => {
-            peerConnection.getStats().then(report => {
-                let quality: 'good' | 'medium' | 'poor' = 'good';
-                report.forEach(stat => {
-                    if (stat.type === 'candidate-pair' && stat.currentRoundTripTime) {
-                        const rtt = stat.currentRoundTripTime;
-                        if (rtt > 0.4) quality = 'poor';
-                        else if (rtt > 0.2) quality = 'medium';
-                    }
+            const intervalId = setInterval(() => {
+                peerConnection.getStats().then(report => {
+                    let quality: 'good' | 'medium' | 'poor' = 'good';
+                    report.forEach(stat => {
+                        if (stat.type === 'candidate-pair' && stat.currentRoundTripTime) {
+                            const rtt = stat.currentRoundTripTime;
+                            if (rtt > 0.4) quality = 'poor';
+                            else if (rtt > 0.2) quality = 'medium';
+                        }
+                    });
+                    this.onConnectionQualityChanged?.(userId, quality);
                 });
-                this.onConnectionQualityChanged?.(userId, quality);
-            });
-        }, 5000);
+            }, 5000);
 
-        this.qualityIntervals.set(userId, intervalId);
+            this.qualityIntervals.set(userId, intervalId);
+        } catch (error) {
+            console.error('Error creating peer connection:', error);
+            this.onError?.(new Error('Failed to create peer connection'));
+            throw error;
+        }
     }
 
     private async handleParticipantJoined(userId: string): Promise<void> {
@@ -161,45 +211,71 @@ export class VideoCallService {
     }
 
     public async toggleAudio(enabled: boolean) {
-        if (this.localStream) {
-            this.webRTCManager.toggleAudio(enabled);
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            await this.webRTCManager.toggleAudio(enabled);
             const participant = this.participants.get(this.userId);
             if (participant) {
                 participant.isMuted = !enabled;
                 this.participants.set(this.userId, participant);
             }
+        } catch (error) {
+            console.error('Error toggling audio:', error);
+            this.onError?.(new Error('Failed to toggle audio'));
+            throw error;
         }
     }
 
     public async toggleVideo(enabled: boolean) {
-        if (this.localStream) {
-            this.webRTCManager.toggleVideo(enabled);
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
+            }
+            await this.webRTCManager.toggleVideo(enabled);
             const participant = this.participants.get(this.userId);
             if (participant) {
                 participant.isVideoOn = enabled;
                 this.participants.set(this.userId, participant);
             }
+        } catch (error) {
+            console.error('Error toggling video:', error);
+            this.onError?.(new Error('Failed to toggle video'));
+            throw error;
         }
     }
 
     public async startScreenShare(): Promise<void> {
-        this.screenStream = await this.webRTCManager.startScreenShare();
-        const participant = this.participants.get(this.userId);
-        if (participant) {
-            participant.isScreenSharing = true;
-            this.participants.set(this.userId, participant);
+        try {
+            this.screenStream = await this.webRTCManager.startScreenShare();
+            const participant = this.participants.get(this.userId);
+            if (participant) {
+                participant.isScreenSharing = true;
+                this.participants.set(this.userId, participant);
+            }
+        } catch (error) {
+            console.error('Error starting screen share:', error);
+            this.onError?.(new Error('Failed to start screen sharing'));
+            throw error;
         }
     }
 
     public async stopScreenShare(): Promise<void> {
-        if (this.screenStream) {
-            this.screenStream.getTracks().forEach(track => track.stop());
-            this.screenStream = null;
-            const participant = this.participants.get(this.userId);
-            if (participant) {
-                participant.isScreenSharing = false;
-                this.participants.set(this.userId, participant);
+        try {
+            if (this.screenStream) {
+                await this.webRTCManager.stopScreenShare();
+                this.screenStream = null;
+                const participant = this.participants.get(this.userId);
+                if (participant) {
+                    participant.isScreenSharing = false;
+                    this.participants.set(this.userId, participant);
+                }
             }
+        } catch (error) {
+            console.error('Error stopping screen share:', error);
+            this.onError?.(new Error('Failed to stop screen sharing'));
+            throw error;
         }
     }
 
@@ -225,20 +301,28 @@ export class VideoCallService {
     }
 
     public async setAudioDevice(deviceId: string): Promise<void> {
-        if (this.localStream) {
-            const audioTrack = this.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                await audioTrack.applyConstraints({ deviceId: { exact: deviceId } });
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
             }
+            await this.webRTCManager.setAudioDevice(deviceId);
+        } catch (error) {
+            console.error('Error setting audio device:', error);
+            this.onError?.(new Error('Failed to set audio device'));
+            throw error;
         }
     }
 
     public async setVideoDevice(deviceId: string): Promise<void> {
-        if (this.localStream) {
-            const videoTrack = this.localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                await videoTrack.applyConstraints({ deviceId: { exact: deviceId } });
+        try {
+            if (!this.localStream) {
+                throw new Error('Local stream not initialized');
             }
+            await this.webRTCManager.setVideoDevice(deviceId);
+        } catch (error) {
+            console.error('Error setting video device:', error);
+            this.onError?.(new Error('Failed to set video device'));
+            throw error;
         }
     }
 
@@ -247,12 +331,16 @@ export class VideoCallService {
     }
 
     public cleanup(): void {
-        this.webRTCManager.cleanup();
-        this.socket.disconnect();
-        this.localStream?.getTracks().forEach(track => track.stop());
-        this.screenStream?.getTracks().forEach(track => track.stop());
-        this.qualityIntervals.forEach(interval => clearInterval(interval));
-        this.qualityIntervals.clear();
-        this.participants.clear();
+        try {
+            this.webRTCManager.cleanup();
+            this.qualityIntervals.forEach(interval => clearInterval(interval));
+            this.qualityIntervals.clear();
+            this.participants.clear();
+            this.localStream = null;
+            this.screenStream = null;
+        } catch (error) {
+            console.error('Error during cleanup:', error);
+            this.onError?.(new Error('Failed to cleanup resources'));
+        }
     }
 }

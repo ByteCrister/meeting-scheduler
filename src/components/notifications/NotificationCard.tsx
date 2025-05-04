@@ -22,12 +22,12 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
         setOpenMenus((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const handleRouting = async (notificationId: string, slot_id: string) => {
+    const handleRouting = async (notificationId: string) => {
         const type = notification.type;
         const RoutingPath = (type === NotificationType.FOLLOW || type === NotificationType.SLOT_BOOKED)
             ? `/searched-profile?user=${notification.sender}`
             : type === NotificationType.SLOT_CREATED
-                ? `/meeting-post-feed?meeting-post=${slot_id}`
+                ? `/meeting-post-feed?meeting-post=${notification.slot}`
                 : NotificationType.SLOT_UPDATED
                     ? `/booked-meetings?meeting-slot=${notification.slot}`
                     : type === NotificationType.SLOT_DELETED
@@ -59,7 +59,7 @@ const NotificationCard = ({ notification }: { notification: Notification }) => {
     return (
         <div
             key={notification._id}
-            onClick={() => handleRouting(notification._id, (notification.slot || ''))}
+            onClick={() => handleRouting(notification._id)}
             className={`relative flex items-start space-x-4 px-4 py-3 ${!notification.isRead ? "bg-blue-50" : "bg-white"
                 } hover:bg-blue-100/40 transition-all cursor-pointer`}
         >

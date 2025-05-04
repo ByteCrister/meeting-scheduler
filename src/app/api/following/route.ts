@@ -7,6 +7,7 @@ import NotificationsModel, { INotificationType } from "@/models/NotificationsMod
 import { SocketTriggerTypes } from "@/utils/constants";
 import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
 import getNotificationExpiryDate from "@/utils/server/getNotificationExpiryDate";
+import { Types } from "mongoose";
 
 // ? Get peoples that I follow
 export async function GET(req: NextRequest) {
@@ -90,35 +91,47 @@ export async function POST(req: NextRequest) {
         // Save both users' data in parallel
         await Promise.all([currentUser.save(), targetUser.save()]);
 
-        // * New Notification Object 
-        const sendNewNotification = {
+        // Check if a FOLLOW notification already exists from this user to the target user
+        const senderId = new Types.ObjectId(userId);
+        const receiverId = new Types.ObjectId(followingFriendId);
+
+        const existingFollowNotification = await NotificationsModel.findOne({
             type: INotificationType.FOLLOW,
-            sender: userId, // Me - started following a user
-            receiver: targetUser._id, // User whom I started following
-            message: `${currentUser.username} started following you.`,
-            isRead: false,
-            isClicked: false,
-            createdAt: new Date(),
-            expiresAt: getNotificationExpiryDate(30), // 30 days
-        };
-        // * Notification is pushed and saved to collection
-        const notificationDoc = new NotificationsModel(sendNewNotification);
-        const savedNotification = await notificationDoc.save();
-
-        // ? Incrementing count of unseen notifications by +1 to the followed person
-        await UserModel.findByIdAndUpdate(targetUser._id, { $inc: { countOfNotifications: 1 } }, { new: true });
-
-        // * --------------- socket -------------------
-        // ! Emit a notification to the owner of the slot        
-        triggerSocketEvent({
-            userId: targetUser._id.toString(),
-            type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
-            notificationData: {
-                ...sendNewNotification,
-                _id: savedNotification._id,
-                image: currentUser?.image,
-            },
+            sender: senderId,
+            receiver: receiverId,
         });
+
+        if (!existingFollowNotification) {
+            // * New Notification Object 
+            const sendNewNotification = {
+                type: INotificationType.FOLLOW,
+                sender: senderId, // Me - started following a user
+                receiver: receiverId, // User whom I started following
+                message: `${currentUser.username} started following you.`,
+                isRead: false,
+                isClicked: false,
+                createdAt: new Date(),
+                expiresAt: getNotificationExpiryDate(30), // 30 days
+            };
+            // * Notification is pushed and saved to collection
+            const savedNotification = await new NotificationsModel(sendNewNotification).save();
+            // console.log("✅ Notification Saved:", savedNotification);
+
+            // ? Incrementing count of unseen notifications by +1 to the followed person
+            await UserModel.findByIdAndUpdate(targetUser._id, { $inc: { countOfNotifications: 1 } }, { new: true });
+
+            // ! Emit a notification to the owner of the slot        
+            triggerSocketEvent({
+                userId: targetUser._id.toString(),
+                type: SocketTriggerTypes.RECEIVED_NOTIFICATION,
+                notificationData: {
+                    ...sendNewNotification,
+                    _id: savedNotification._id.toString(),
+                    image: currentUser?.image,
+                },
+            });
+        }
+
 
         // ? Prepare following user data to send back
         const followingUser = {
@@ -177,12 +190,14 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ message: "Unfollow failed", success: false }, { status: 400 });
         }
 
-        // Optionally delete follow notifications for this action
-        await NotificationsModel.deleteMany({
-            sender: currentUserId,
-            receiver: followingFriendId,
-            type: INotificationType.FOLLOW,
-        });
+        // // Optionally delete follow notifications for this action
+        // await NotificationsModel.deleteMany({
+        //     sender: currentUserId,
+        //     receiver: followingFriendId,
+        //     type: INotificationType.FOLLOW,
+        //     isClicked: false,
+        //     isRead: false
+        // });
 
         return NextResponse.json({ message: "Unfollowed successfully", success: true }, { status: 200 });
     } catch (error) {

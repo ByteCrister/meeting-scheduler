@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
                 type: INotificationType.SLOT_CREATED,
                 sender: userId,
                 message: `New meeting slot "${newSlot.title}" just dropped!`,
+                slot: newSlot._id,
                 isRead: false,
                 isClicked: false,
                 createdAt: now,
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
                 type: INotificationType.SLOT_UPDATED,
                 sender: userId,
                 message: `Meeting slot "${updatedSlot?.title}" was updated.`,
+                slot: updatedSlot._id,
                 isRead: false,
                 isClicked: false,
                 createdAt: now,
@@ -245,7 +247,7 @@ export async function DELETE(req: NextRequest) {
             const sendNewNotification = {
                 type: INotificationType.SLOT_DELETED,
                 sender: userId, // Me - Was created a meeting slot.
-                message: `Meeting of ${slot.title} is cancelled.`,
+                message: `Meeting of "${slot.title}" is cancelled.`,
                 isRead: false,
                 isClicked: false,
                 createdAt: now,

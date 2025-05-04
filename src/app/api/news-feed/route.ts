@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/utils/server/getUserFromToken';
 import ConnectDB from '@/config/ConnectDB';
 import UserModel, { IUserFollowInfo } from '@/models/UserModel';
-import SlotModel, { ISlot } from '@/models/SlotModel';
+import SlotModel, { IRegisterStatus } from '@/models/SlotModel';
 
 
 export const GET = async (req: NextRequest) => {
@@ -18,34 +18,30 @@ export const GET = async (req: NextRequest) => {
         const limit = 5;
         const skip = (page - 1) * limit;
         const searchedPost = req.nextUrl.searchParams.get('meeting-post');
-        console.log(page);
-
 
         const user = await UserModel.findById(userId);
-        if (!user) return NextResponse.json([], { status: 200 });
+        if (!user) return NextResponse.json({ success: false, data: [] }, { status: 200 });
 
-        const followedIds = user.following.map((f: IUserFollowInfo) => f.userId);
+        const followedIds = user.following.map((f: IUserFollowInfo) => f.userId.toString());
 
-        const baseQuery: {
-            status: ISlot["status"];
-            $expr: { $gt: [string, { $size: string }] };
-            ownerId?: { $in: string[] };
-        } = {
-            status: 'upcoming',
+        // Determine potential owners to fetch slots from
+        let ownerIds: string[] = followedIds;
+
+        const baseQuery = {
+            status: IRegisterStatus.Upcoming,
             $expr: { $gt: ["$guestSize", { $size: "$bookedUsers" }] },
+            ownerId: { $in: ownerIds },
+            bookedUsers: { $ne: userId },
         };
 
-        if (user.following.length > 5) {
-            baseQuery.ownerId = { $in: followedIds };
-        } else {
+        if (followedIds.length <= 5) {
             const fallbackUsers = await UserModel.find({ profession: user.profession })
                 .sort({ searchScore: -1 })
-                .limit(limit);
+                .limit(limit)
+                .select("_id");
 
             const fallbackIds = fallbackUsers.map(u => u._id.toString());
-            baseQuery.ownerId = {
-                $in: [...followedIds, ...fallbackIds],
-            };
+            ownerIds = Array.from(new Set([...followedIds, ...fallbackIds]));
         }
 
         // Fetch feed slots

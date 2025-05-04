@@ -49,7 +49,7 @@ const NotificationIcon = () => {
           <button onClick={handleRefreshCount} className="relative p-2 rounded-full hover:bg-blue-100/40 transition cursor-pointer">
             <Bell className="w-6 h-6 text-gray-700" />
             {user?.countOfNotifications !== 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium px-1.5 py-0.5 rounded-full shadow">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full shadow">
                 {user?.countOfNotifications}
               </span>
             )}

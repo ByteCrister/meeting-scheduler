@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { IRegisterStatus } from "./SlotModel";
 
 export interface IUserFollowInfo {
     userId: string;
@@ -9,7 +10,7 @@ export interface IUserFollowInfo {
 export interface IBookedSlots {
     userId: string;
     slotId: string;
-    status: "upcoming" | "ongoing" | "expired";
+    status: IRegisterStatus;
 }
 
 // * Interface for User document
