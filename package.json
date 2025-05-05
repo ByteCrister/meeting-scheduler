@@ -61,6 +61,7 @@
     "sonner": "^2.0.3",
     "tailwind-animate": "^0.2.10",
     "tailwind-merge": "^3.2.0",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.2.17",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.5",
     "yup": "^1.6.1"
@@ -84,7 +85,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
