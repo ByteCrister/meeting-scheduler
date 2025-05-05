@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
             };
             // * Notification is pushed and saved to collection
             const savedNotification = await new NotificationsModel(sendNewNotification).save();
-            // console.log("✅ Notification Saved:", savedNotification);
 
             // ? Incrementing count of unseen notifications by +1 to the followed person
             await UserModel.findByIdAndUpdate(targetUser._id, { $inc: { countOfNotifications: 1 } }, { new: true });

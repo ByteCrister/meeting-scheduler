@@ -7,8 +7,12 @@ import NotificationSocketProvider from "@/utils/socket/NotificationSocketProvide
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Meeting Scheduler",
+  title: {
+    template: '%s | MetingSync',
+    default: 'MetingSync',
+  },
   description: "Schedule and manage your meetings efficiently",
+  // metadataBase: new URL('https://next-learn-dashboard.vercel.sh'),
 };
 
 export default function RootLayout({

@@ -44,53 +44,53 @@ const ApiOperations = {
   remove: async (userId: string) => await removeFriend(userId),
 };
 
-const dummyFollowers: FriendList[] = [
-  {
-    _id: "1",
-    username: "johndoe",
-    image: "https://i.pravatar.cc/150?img=3",
-    title: "Senior Developer",
-    description: "Full-stack engineer specializing in React and Node.js",
-    isFollower: true,
-    isFollowing: true,
-  },
-  {
-    _id: "2",
-    username: "janedoe",
-    image: "https://i.pravatar.cc/150?img=5",
-    title: "UX Lead",
-    description: "Designing delightful experiences at a fintech startup",
-    isFollower: true,
-    isFollowing: false,
-  },
-  {
-    _id: "3",
-    username: "michaelb",
-    image: "https://i.pravatar.cc/150?img=10",
-    title: "Data Analyst",
-    description: "Turning numbers into insights at HealthTech Inc.",
-    isFollower: false,
-    isFollowing: true,
-  },
-  {
-    _id: "4",
-    username: "chloesmith",
-    image: "https://i.pravatar.cc/150?img=15",
-    title: "Cloud Infrastructure Engineer",
-    description: "Automating deployments and building scalable systems",
-    isFollower: true,
-    isFollowing: true,
-  },
-  {
-    _id: "5",
-    username: "khalidtech",
-    image: "https://i.pravatar.cc/150?img=20",
-    title: "Mobile App Developer",
-    description: "Building smooth mobile experiences with Flutter",
-    isFollower: false,
-    isFollowing: false,
-  },
-];
+// const dummyFollowers: FriendList[] = [
+//   {
+//     _id: "1",
+//     username: "johndoe",
+//     image: "https://i.pravatar.cc/150?img=3",
+//     title: "Senior Developer",
+//     description: "Full-stack engineer specializing in React and Node.js",
+//     isFollower: true,
+//     isFollowing: true,
+//   },
+//   {
+//     _id: "2",
+//     username: "janedoe",
+//     image: "https://i.pravatar.cc/150?img=5",
+//     title: "UX Lead",
+//     description: "Designing delightful experiences at a fintech startup",
+//     isFollower: true,
+//     isFollowing: false,
+//   },
+//   {
+//     _id: "3",
+//     username: "michaelb",
+//     image: "https://i.pravatar.cc/150?img=10",
+//     title: "Data Analyst",
+//     description: "Turning numbers into insights at HealthTech Inc.",
+//     isFollower: false,
+//     isFollowing: true,
+//   },
+//   {
+//     _id: "4",
+//     username: "chloesmith",
+//     image: "https://i.pravatar.cc/150?img=15",
+//     title: "Cloud Infrastructure Engineer",
+//     description: "Automating deployments and building scalable systems",
+//     isFollower: true,
+//     isFollowing: true,
+//   },
+//   {
+//     _id: "5",
+//     username: "khalidtech",
+//     image: "https://i.pravatar.cc/150?img=20",
+//     title: "Mobile App Developer",
+//     description: "Building smooth mobile experiences with Flutter",
+//     isFollower: false,
+//     isFollowing: false,
+//   },
+// ];
 
 export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
   const currentUserId = useAppSelector(state => state.userStore.user?._id);
@@ -119,8 +119,7 @@ export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
         success: boolean;
       };
       if (success) {
-        if (data.length === 0) setFollowers(dummyFollowers);
-        else setFollowers(data);
+        setFollowers(data);
       }
       setIsLoading(false);
     };
