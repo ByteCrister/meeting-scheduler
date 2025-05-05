@@ -1,25 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MeetingCard } from './MeetingCard';
+import { Meeting, MeetingCard } from './MeetingCard';
 import { MeetingCardSkeleton } from './MeetingCardSkeleton';
 import { SearchBar } from './SearchBar';
 import { SortOptions } from './SortOptions';
 import { FilterOptions } from './FilterOptions';
-
-interface Meeting {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  guestSize: number;
-  totalParticipants: number;
-  engagementRate: number;
-  category: string;
-  host: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
-  thumbnail?: string;
-}
 
 export const PopularPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +31,10 @@ export const PopularPage: React.FC = () => {
           category: 'Business',
           host: 'John Smith',
           status: 'upcoming',
-          thumbnail: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+          thumbnail: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          description: 'A meeting to discuss the overall strategy for the upcoming quarter, including key initiatives and financial goals.',
+          tags: ['strategy', 'business', 'planning'],
+          duration: '2 hours',
         },
         {
           id: '2',
@@ -58,7 +47,10 @@ export const PopularPage: React.FC = () => {
           category: 'Product',
           host: 'Sarah Johnson',
           status: 'ongoing',
-          thumbnail: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+          thumbnail: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          description: 'A brainstorming session to come up with new features for the next version of our product.',
+          tags: ['brainstorm', 'product development', 'innovation'],
+          duration: '1.5 hours',
         },
         {
           id: '3',
@@ -71,7 +63,10 @@ export const PopularPage: React.FC = () => {
           category: 'Team',
           host: 'Michael Brown',
           status: 'completed',
-          thumbnail: 'https://images.unsplash.com/photo-1522199755839-a2bacb67f546?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+          thumbnail: 'https://images.unsplash.com/photo-1522199755839-a2bacb67f546?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          description: 'A workshop to enhance teamwork and collaboration within the company through various exercises.',
+          tags: ['team building', 'workshop', 'collaboration'],
+          duration: '3 hours',
         }
       ]);
       setIsLoading(false);
