@@ -1,7 +1,12 @@
 {
     "cSpell.words": [
+        "cmdk",
+        "luxon",
+        "mediasoup",
+        "peerjs",
         "Shadcn",
         "sonner",
-        "toastify"
+        "toastify",
+        "turbopack"
     ]
 }
