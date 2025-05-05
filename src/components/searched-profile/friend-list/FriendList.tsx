@@ -119,7 +119,6 @@ export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
         success: boolean;
       };
       if (success) {
-        console.log(data);
         setFollowers(data);
       }
       setIsLoading(false);
