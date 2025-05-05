@@ -1,11 +1,16 @@
 {
     "cSpell.words": [
+<<<<<<< HEAD
         "flyonui",
+=======
+        "cmdk",
+>>>>>>> work
         "luxon",
         "mediasoup",
         "peerjs",
         "Shadcn",
         "sonner",
-        "toastify"
+        "toastify",
+        "turbopack"
     ]
 }

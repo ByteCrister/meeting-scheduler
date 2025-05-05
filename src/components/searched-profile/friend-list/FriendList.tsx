@@ -105,7 +105,7 @@ export const FriendList: React.FC<FollowersListProps> = ({ userId, type }) => {
   } | null>(null);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [maxItem] = useState<number>(3);
+  const maxItem = 3;
 
   useEffect(() => {
     const fetchData = async () => {
