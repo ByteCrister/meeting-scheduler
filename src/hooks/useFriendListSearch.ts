@@ -16,16 +16,16 @@ const useFriendListSearch = () => {
             keys: [
                 {
                     name: 'name',
-                    weight: 0.7,
+                    weight: 1,
                     getFn: (item: FriendTypes) => (item.name?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'title',
-                    weight: 0.6,
+                    weight: 1,
                     getFn: (item: FriendTypes) => (item.title?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
             ],
-            threshold: 0.3,
+            threshold: 0.2,
             includeScore: true,
         });
     }, [friendListStore]);

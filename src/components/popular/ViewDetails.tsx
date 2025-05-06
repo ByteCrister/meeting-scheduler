@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
-import { Meeting } from './MeetingCard';
-type PropTypes = { meeting: Meeting };
+import { PopularMeeting } from '@/types/client-types';
 
-const ViewDetails = ({ meeting }: PropTypes) => {
+const ViewDetails = ({ meeting }: { meeting: PopularMeeting }) => {
     const [currentPart, setCurrentPart] = useState(1);
     const handleNext = () => {
         if (currentPart < 3) setCurrentPart(currentPart + 1);
@@ -47,12 +46,12 @@ const ViewDetails = ({ meeting }: PropTypes) => {
                     <div className="text-sm text-gray-700">
                         <p>
                             <span className="font-medium">Meeting Date & Time:</span>{' '}
-                            {new Date(meeting.date).toLocaleDateString('en-US', {
+                            {new Date(meeting.meetingDate).toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
                             })}{' '}
-                            • Duration: {meeting.duration}
+                            • Duration: {`${meeting.durationFrom} - ${meeting.durationTo}`}
                         </p>
                     </div>
                 )}

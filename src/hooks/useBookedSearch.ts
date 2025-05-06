@@ -24,32 +24,32 @@ const useBookedSearch = () => {
             keys: [
                 {
                     name: 'creator',
-                    weight: 0.8,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => (meeting.creator?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'title',
-                    weight: 0.8,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => (meeting.title?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'status',
-                    weight: 0.7,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => (meeting.status?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'category',
-                    weight: 0.6,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => (meeting.category?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'meetingDate',
-                    weight: 0.5,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => formateSlotMeetingDate(meeting.meetingDate)?.toLowerCase().replace(/\s+/g, '') ?? '',
                 },
                 {
                     name: 'duration',
-                    weight: 0.4,
+                    weight: 1,
                     getFn: (meeting: BookedSlotsTypes) => getDuration(meeting.durationFrom, meeting.durationTo).toLowerCase().replace(/\s+/g, ''),
                 }
 

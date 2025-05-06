@@ -3,7 +3,7 @@ import UserModel from "@/models/UserModel";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
 import { NextRequest, NextResponse } from "next/server";
 import { ApiNotificationTypes } from "@/utils/constants";
-import SlotModel from "@/models/SlotModel";
+import SlotModel, { IRegisterStatus } from "@/models/SlotModel";
 
 
 export async function GET(req: NextRequest) {
@@ -23,21 +23,20 @@ export async function GET(req: NextRequest) {
         }
 
         // Only fetch slots with specific statuses
-        const allowedStatuses = ['upcoming', 'ongoing', 'completed'];
+        const allowedStatuses = [IRegisterStatus.Upcoming, IRegisterStatus.Ongoing, IRegisterStatus.Completed];
         const slots = await SlotModel.find({
             ownerId: user._id,
             status: { $in: allowedStatuses },
-        })
-            .sort({ meetingDate: -1 })
-            .lean();
+        }).sort({ meetingDate: -1 })
 
         // Format response to match sampleActivities
         const activities = slots.map((slot) => ({
-            id: slot._id,
+            id: slot._id.toString(),
             title: slot.title,
-            time: user.timeZone,
-            // time: getConvertedTime(slot.meetingDate, slot.durationFrom, user.timeZone),
-            type: slot.status === 'completed' ? 'recent' : (slot.status === 'ongoing' && slot.guestSize !== slot.bookedUsers.length) ? 'available' : slot.status, //? 'upcoming' | 'ongoing' - 'available | 'completed' - 'recent'
+            time: `${slot.durationFrom} - ${slot.durationTo}`,
+            type: slot.status === IRegisterStatus.Completed ?
+                'recent' : (slot.status === IRegisterStatus.Ongoing && slot.guestSize !== slot.bookedUsers.length)
+                    ? 'available' : slot.status, //? 'upcoming' | 'ongoing' - 'available | 'completed' - 'recent'
         }));
 
         return NextResponse.json({ user: user, activities: activities, success: true }, { status: 200 });
