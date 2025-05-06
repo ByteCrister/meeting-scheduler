@@ -24,40 +24,40 @@ const useSlotSearch = () => {
             keys: [
                 {
                     name: 'title',
-                    weight: 0.8,
+                    weight: 1,
                     getFn: (slot: registerSlot) => (slot.title?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'status',
-                    weight: 0.7,
+                    weight: 1,
                     getFn: (slot: registerSlot) => (slot.status?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'category',
-                    weight: 0.6,
+                    weight: 1,
                     getFn: (slot: registerSlot) => (slot.category?.toString().trim().toLowerCase().replace(/\s+/g, '') ?? ''),
                 },
                 {
                     name: 'meetingDate',
-                    weight: 0.5,
+                    weight: 1,
                     getFn: (slot: registerSlot) =>
                         formateSlotMeetingDate(slot.meetingDate)?.toLowerCase().replace(/\s+/g, '') ?? '',
                 },
                 {
                     name: 'createdAt',
-                    weight: 0.5,
+                    weight: 1,
                     getFn: (slot: registerSlot) =>
                         formatDateStringToDateYear(slot.createdAt)?.toLowerCase().replace(/\s+/g, '') ?? '',
                 },
                 {
                     name: 'bookedUsers',
-                    weight: 0.5,
+                    weight: 1,
                     getFn: (slot: registerSlot) =>
                         slot.bookedUsers?.length.toString().trim().toLowerCase().replace(/\s+/g, '') ?? '', // count as string
                 },
             ],
 
-            threshold: 0.3, // lower = stricter; higher = looser match
+            threshold: 0.2, // lower = stricter; higher = looser match
             includeScore: true,
         });
     }, [Store]);

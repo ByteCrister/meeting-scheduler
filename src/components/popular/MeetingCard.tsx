@@ -1,44 +1,11 @@
+'use client';
+
 import React from 'react';
 import ViewDetails from './ViewDetails';
+import { PopularMeeting } from '@/types/client-types';
+import { formateSlotMeetingDate } from '../my-slots/SlotCard';
 
-export interface Meeting {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  guestSize: number;
-  totalParticipants: number;
-  engagementRate: number;
-  category: string;
-  host: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
-  thumbnail?: string;
-  description: string;
-  tags: string[];
-  duration: string;
-}
-
-interface MeetingCardProps {
-  meeting: Meeting;
-}
-
-const dummyMeeting: Meeting = {
-  id: '1',
-  title: 'Weekly Team Meeting',
-  date: '2025-04-22',
-  time: '02:00 PM',
-  guestSize: 10,
-  totalParticipants: 15,
-  engagementRate: 80,
-  category: 'Business',
-  host: 'John Doe',
-  status: 'upcoming',
-  description: 'This is a weekly team meeting to discuss the current project and next steps.',
-  tags: ['project', 'business', 'team'],
-  duration: '02:00 PM - 04:00 PM',
-};
-
-export const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
+export const MeetingCard = ({ meeting }: { meeting: PopularMeeting }) => {
   return (
     <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 p-6 space-y-5 flex flex-col h-full">
       {/* Category Pill */}
@@ -62,12 +29,8 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
           />
         </svg>
         <span>
-          {new Date(meeting.date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-          })}{' '}
-          at {meeting.time}
+          {formateSlotMeetingDate(meeting.meetingDate)}{' '}
+          at {meeting.durationFrom}
         </span>
       </div>
 
@@ -91,18 +54,18 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
       <div className="space-y-1">
         <div className="flex justify-between text-sm text-gray-500">
           <span>Engagement Rate</span>
-          <span className="font-medium text-gray-700">{meeting.engagementRate}%</span>
+          <span className="font-medium text-gray-700">{meeting.engagementRate * 100}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-blue-500 h-2 rounded-full"
-            style={{ width: `${meeting.engagementRate}%` }}
+            style={{ width: `${meeting.engagementRate * 100}%` }}
           />
         </div>
       </div>
 
       {/* View Details Button */}
-      <ViewDetails meeting={dummyMeeting} />
+      <ViewDetails meeting={meeting} />
     </div>
   );
 };

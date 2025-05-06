@@ -11,6 +11,7 @@
         "Shadcn",
         "sonner",
         "toastify",
-        "turbopack"
+        "turbopack",
+        "videocalls"
     ]
 }

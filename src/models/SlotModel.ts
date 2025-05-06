@@ -53,11 +53,7 @@ const SlotSchema = new Schema<ISlot>(
             type: Date,
             required: true,
         },
-        tags: [
-            {
-                type: String,
-            },
-        ],
+        tags: [{ type: String, }],
         durationFrom: {
             type: String,
             required: true,
@@ -99,6 +95,5 @@ const SlotSchema = new Schema<ISlot>(
     }
 );
 
-// * Model export
 const SlotModel = mongoose.models.slots || mongoose.model<ISlot>("slots", SlotSchema);
 export default SlotModel;

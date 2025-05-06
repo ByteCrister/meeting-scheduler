@@ -7,7 +7,7 @@ import React from "react";
 
 interface SearchBarProps {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (value: string) => void;
 }
 
 export const SearchBar = ({ value, onChange }: SearchBarProps) => {
@@ -18,10 +18,11 @@ export const SearchBar = ({ value, onChange }: SearchBarProps) => {
       </div>
 
       <Input
+        name="search-popular"
         type="text"
         placeholder="Search meetings..."
         value={value}
-        onChange={onChange}
+        onChange={(e) => onChange(e.target.value)}
         className="pl-10 pr-10 h-10 rounded-md border border-input bg-background
                    focus:outline-none focus:ring-[1.5px] focus:ring-muted 
                    focus:ring-offset-[1px] focus:ring-offset-background transition-all"
@@ -29,10 +30,11 @@ export const SearchBar = ({ value, onChange }: SearchBarProps) => {
 
       {value && (
         <Button
+          name="clear-search"
           variant="ghost"
           size="icon"
           className="absolute right-0 top-0 h-10 w-10 text-muted-foreground hover:bg-transparent hover:text-muted-foreground"
-          // onClick={handleClear}
+          onClick={() => onChange("")}
           aria-label="Clear search"
         >
           <X className="h-4 w-4" />

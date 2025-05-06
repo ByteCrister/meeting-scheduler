@@ -1,7 +1,7 @@
 import { FriendTypes } from "@/components/followers/Followers";
 import { NotificationType } from "@/utils/constants";
 
-// ? booked meeting slot types
+// * Booked meeting slot Type
 export type BookedSlotsTypes = Omit<
     registerSlot,
     | "guestSize"
@@ -15,9 +15,10 @@ export type BookedSlotsTypes = Omit<
     creatorId: string;
     creator: string;
 };
+// ? --------------- end ----------------
 
 
-// ? Notification types
+// * Notification Type
 export interface Notification {
     _id: string;
     type: NotificationType;
@@ -34,7 +35,7 @@ export interface Notification {
     createdAt: string;
 }
 
-// ? Register slots type starts... not using
+// * Register slots Type
 export enum RegisterSlotStatus {
     Upcoming = "upcoming",
     Ongoing = "ongoing",
@@ -59,7 +60,25 @@ export interface registerSlot {
     createdAt: string;
     updatedAt: string;
 }
-// ? ---------------- end -----------------
+// ? ---------------- end ---------------
+
+
+// * Popular Meeting Type
+export interface PopularMeeting {
+    _id: string;
+    title: string;
+    meetingDate: string;
+    guestSize: number;
+    totalParticipants: number;
+    engagementRate: number;
+    category: string;
+    status: RegisterSlotStatus.Upcoming | RegisterSlotStatus.Ongoing | RegisterSlotStatus.Completed;
+    description: string;
+    tags: string[];
+    durationFrom: string,
+    durationTo: string
+}
+// ? ---------------- end ---------------
 
 
 // ! Meeting feed types
@@ -192,7 +211,7 @@ export interface componentSliceInitialTypes {
     }
 }
 
-// ? Friend Zone types....
+// ? Friend Zone types
 export interface friendZoneSliceInitialTypes {
     friendListStore: FriendTypes[] | null;
     friendList: FriendTypes[] | null;
@@ -202,6 +221,6 @@ export interface friendZoneSliceInitialTypes {
 // ? User slice
 export interface userSliceInitialState {
     user: Users | null;
-    notifications: Notification [] | null;
+    notifications: Notification[] | null;
     activities: ActivityType[] | null;
 }
