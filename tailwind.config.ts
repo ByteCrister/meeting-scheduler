@@ -1,4 +1,6 @@
-import  { Config } from "tailwindcss";
+// tailwind.config.ts
+
+import { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 import daisyui from 'daisyui';
 
