@@ -1,11 +1,15 @@
 {
     "cSpell.words": [
         "cmdk",
+        "kmeans",
         "luxon",
         "mediasoup",
         "peerjs",
         "Shadcn",
         "sonner",
+        "stopword",
+        "Stopwords",
+        "tfidf",
         "toastify",
         "turbopack",
         "videocalls"
