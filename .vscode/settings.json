@@ -4,12 +4,15 @@
         "flyonui",
 =======
         "cmdk",
->>>>>>> work
+        "kmeans",
         "luxon",
         "mediasoup",
         "peerjs",
         "Shadcn",
         "sonner",
+        "stopword",
+        "Stopwords",
+        "tfidf",
         "toastify",
         "turbopack",
         "videocalls"
