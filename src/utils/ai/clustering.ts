@@ -1,4 +1,5 @@
 // * src>utils>ai>clustering.ts
+"use server"
 
 import * as kmeans from "ml-kmeans";  // Importing everything under kmeans
 import { PartialSlot } from "@/app/api/ai-insights/trending/route";
@@ -13,7 +14,7 @@ const euclideanDistance = (p: number[], q: number[]): number => {
     return Math.sqrt(sum);
 };
 
-export const clusterMeetings = (slots: PartialSlot[], numClusters = 4) => {
+export const clusterMeetings = async (slots: PartialSlot[], numClusters = 4) => {
     const numSlots = slots.length;
 
     // If there are no slots, return an empty result or handle gracefully

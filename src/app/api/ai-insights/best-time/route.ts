@@ -12,7 +12,7 @@ export async function GET() {
         const rawSlots = await SlotModel.find({}, { meetingDate: 1, engagementRate: 1, durationFrom: 1, durationTo: 1, _id: 0 }).lean();
         const slots: TimeDataSlot[] = rawSlots as unknown as TimeDataSlot[];
 
-        const result = analyzeBestTimes(slots);
+        const result = await analyzeBestTimes(slots);
 
         return NextResponse.json({ success: true, data: result }, { status: 200 });
     } catch (error) {

@@ -15,7 +15,7 @@ export async function GET() {
 
     const slots: PartialSlot[] = rawSlots as unknown as PartialSlot[];
 
-    const clusters = clusterMeetings(slots);
+    const clusters = await clusterMeetings(slots);
 
     const clusteredSlots = slots.map((slot, index) => ({
       ...slot,

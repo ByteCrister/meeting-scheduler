@@ -13,7 +13,7 @@ export async function GET() {
             .lean();
 
         const slots: PartialSlot[] = rawSlots as unknown as PartialSlot[];
-        const keywords = extractTopKeywords(slots);
+        const keywords = await extractTopKeywords(slots);
 
         return NextResponse.json({ success: true, data: keywords }, { status: 200 });
     } catch (error) {

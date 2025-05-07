@@ -1,4 +1,5 @@
 // * src>utils>ai>timeAnalysis.ts
+"use server"
 
 import { TimeDataSlot } from "@/app/api/ai-insights/best-time/route";
 
@@ -22,7 +23,7 @@ const parseTime = (timeStr: string) => {
     return new Date(1970, 0, 1, hours, minutes);  // Use a dummy date, only time matters
 };
 
-export const analyzeBestTimes = (slots: TimeDataSlot[]) => {
+export const analyzeBestTimes = async (slots: TimeDataSlot[]) => {
     const days: Record<string, { engagementRates: number[], durations: number[], date: Date }> = {};
 
     slots.forEach(slot => {

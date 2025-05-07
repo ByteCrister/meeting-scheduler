@@ -22,6 +22,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    // Mock 'webworker-threads' so Next.js doesn't try to bundle it
+    config.resolve = {
+      ...(config.resolve || {}),
+      fallback: {
+        ...(config.resolve?.fallback || {}),
+        'webworker-threads': false,
+      },
+    };
+
+    return config;
+  },
 };
 
 export default nextConfig;

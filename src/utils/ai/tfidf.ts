@@ -1,8 +1,11 @@
+// * src>utils>ai>tfidf.ts
+"use server";
+
 import { removeStopwords } from "stopword";  // Importing the removeStopwords function
 import { TfIdf } from "natural";
 import { PartialSlot } from "@/app/api/ai-insights/trending/route";
 
-export const extractTopKeywords = (slots: PartialSlot[], topN = 10) => {
+export const extractTopKeywords = async (slots: PartialSlot[], topN = 10) => {
     const tfidf = new TfIdf();
 
     // Preprocess the slot data by removing stopwords from the combined text
