@@ -125,7 +125,7 @@ const DateTimePicker = () => {
     };
 
     return (
-        <div className="w-full px-4 sm:px-6">
+        <div className="w-full">
             <div className="w-full max-w-md mx-auto space-y-4">
                 <p className="text-sm font-medium text-gray-700">Select a Date</p>
 

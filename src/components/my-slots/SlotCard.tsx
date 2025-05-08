@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Calendar, Tag, Users } from "lucide-react";
+import { Calendar, Tag } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { useCallback } from "react";
 import { registerSlot, RegisterSlotStatus } from "@/types/client-types";
 import SlotOption from "./SlotOption";
 import { createVideoCall } from '@/utils/client/api/api-video-meeting-call';
+import BookUsersPopover from './BookUsersPopover';
 
 const statusColors: Record<RegisterSlotStatus, string> = {
     [RegisterSlotStatus.Upcoming]: 'bg-green-100 text-green-800',
@@ -86,10 +87,7 @@ const SlotCard = ({ slot, isSearchedSlot }: { slot: registerSlot, isSearchedSlot
                                 <Tag className="w-4 h-4 mr-1" />
                                 {slot.category}
                             </div>
-                            <div className="flex items-center text-sm text-gray-500">
-                                <Users className="w-4 h-4 mr-1" />
-                                {slot.bookedUsers.length} bookings
-                            </div>
+                            <BookUsersPopover Slot={slot} />
                             <div className="flex items-center text-sm text-gray-500">
                                 <Calendar className="w-4 h-4 mr-1" />
                                 {formateSlotMeetingDate(slot.meetingDate)}

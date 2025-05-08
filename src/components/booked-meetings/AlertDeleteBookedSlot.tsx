@@ -30,7 +30,7 @@ export function AlertDeleteBookedSlot() {
     if (!slotId) return;
 
     setLoading(true);
-    const responseData =await APIDeleteMeeting(slotId);
+    const responseData = await APIDeleteMeeting(slotId);
 
     if (responseData.success) {
       dispatch(deleteBookedMeeting(slotId));
@@ -44,13 +44,12 @@ export function AlertDeleteBookedSlot() {
 
   return (
     <AlertDialog open={deleteBookedSlotAlert.isOpen}>
-      <AlertDialogContent className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white rounded-xl border-none shadow-xl">
+      <AlertDialogContent className="bg-white text-white rounded-xl border-none shadow-xl">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white">
-            Are you absolutely sure?
+          <AlertDialogTitle className="text-gray-700">
+            Are you sure to cancel this booking?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-blue-100">
-            This action cannot be undone. This will permanently delete this slot.
+          <AlertDialogDescription className="text-gray-700">
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

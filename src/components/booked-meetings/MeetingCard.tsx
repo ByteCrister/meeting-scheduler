@@ -82,7 +82,7 @@ const MeetingCard = ({ meeting, currentUserTimeZone }: { meeting: BookedSlotsTyp
                         onClick={handleDeleteClick}
                         className="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                        Cancel
                     </button>
                     <JoinMeeting isJoinEnabled={isJoinEnabled} meetingId={meeting._id} />
                 </div>
