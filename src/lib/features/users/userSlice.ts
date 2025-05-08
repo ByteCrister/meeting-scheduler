@@ -7,7 +7,8 @@ import { isEqual } from "lodash";
 const initialState: userSliceInitialState = {
     user: null,
     notifications: [],
-    activities: null
+    activities: null,
+    countOfUnseenMessages: 0
 };
 
 export const userSlice = createSlice({
@@ -88,6 +89,11 @@ export const userSlice = createSlice({
                     (slotId) => slotId !== action.payload
                 );
             }
+        },
+
+        // ? Update count Of Unseen Messages
+        setCountOfUnseenMessages: (state, action: PayloadAction<number>) => {
+            state.countOfUnseenMessages = action.payload;
         },
     }
 });

@@ -218,9 +218,39 @@ export interface friendZoneSliceInitialTypes {
     currentPage: number;
 }
 
+// ? Chat Box Slice types
+export interface chatBoxUserListType {
+    _id: string;
+    username: string;
+    email: string;
+    image: string;
+    newUnseenMessages: number;
+    online: boolean
+}
+export interface chatBoxUserType {
+    _id: string;
+    username: string;
+    image: string;
+}
+export interface chatBoxUserChatType {
+    _id: string;
+    user_id: string;
+    message: string;
+    createdAt: string;
+}
+export interface chatBoxSliceTypes {
+    countOfUnseenMessages: number;
+    chatBoxUserList: chatBoxUserListType[];
+    activeUserChat: {
+        user: chatBoxUserType | null,
+        chats: chatBoxUserChatType[]
+    }
+}
+
 // ? User slice
 export interface userSliceInitialState {
     user: Users | null;
     notifications: Notification[] | null;
     activities: ActivityType[] | null;
+    countOfUnseenMessages: number;
 }

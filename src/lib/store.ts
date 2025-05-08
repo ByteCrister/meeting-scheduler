@@ -7,6 +7,7 @@ import slotSlice from './features/Slots/SlotSlice';
 import newsFeedSlice from './features/news-feed/newsFeedSlice';
 import meetingSlice from './features/booked-meetings/bookedSlice';
 import videoCallSlice from './features/video-call-slice/videoCallSlice';
+import chatBoxSlice from './features/chat-box-slice/chatBoxSlice';
 
 export const makeStore = () => {
   return configureStore({
@@ -19,6 +20,7 @@ export const makeStore = () => {
       newFeedStore: newsFeedSlice.reducer,
       meetingStore: meetingSlice.reducer,
       videoCallStore: videoCallSlice,
+      chatBoxStore: chatBoxSlice.reducer
     },
   });
 }

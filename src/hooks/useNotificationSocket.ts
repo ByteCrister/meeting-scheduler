@@ -2,6 +2,7 @@
 
 import ShadcnToast from "@/components/global-ui/toastify-toaster/ShadcnToast";
 import { updateBookedMeetingStatus } from "@/lib/features/booked-meetings/bookedSlice";
+import { addNewMessage, deleteChatMessage, setCountOfUnseenMessage } from "@/lib/features/chat-box-slice/chatBoxSlice";
 import { updateSlotBookedUsers } from "@/lib/features/news-feed/newsFeedSlice";
 import { decreaseBookedUsers, increaseBookedUsers, updateSlotStatus } from "@/lib/features/Slots/SlotSlice";
 import { addSingleNotification, incrementNotificationCount } from "@/lib/features/users/userSlice";
@@ -14,6 +15,7 @@ import { useEffect, useRef } from "react";
 
 const useNotificationSocket = () => {
     const { user } = useAppSelector((state) => state.userStore);
+    const countOfUnseenMessages = useAppSelector(state => state.chatBoxStore.countOfUnseenMessages);
     const dispatch = useAppDispatch();
     const socketRef = useRef<ReturnType<typeof initiateSocket> | null>(null);
 
@@ -98,6 +100,15 @@ const useNotificationSocket = () => {
 
                 });
 
+                // ? Getting new notification
+                socket.on(SocketTriggerTypes.SEND_NEW_CHAT_MESSAGE, (data) => {
+                    dispatch(addNewMessage(data.notificationData)); // ? this is new message object
+                    dispatch(setCountOfUnseenMessage(countOfUnseenMessages + 1));
+                });
+                // ? Delete message
+                socket.on(SocketTriggerTypes.DELETE_CHAT_MESSAGE, (data) => {
+                    dispatch(deleteChatMessage(data.notificationData)); // ? here it's getting deleted message id
+                });
 
             }
         };
