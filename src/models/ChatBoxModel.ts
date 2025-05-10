@@ -1,53 +1,56 @@
 import mongoose, { Schema, Types, Document } from "mongoose";
 
-// Message structure
-export interface IMessageEntry {
+// A message that the owner has sent
+export interface IMessage {
     _id?: Types.ObjectId;
     message: string;
-    createdAt: Date;
-    seen: boolean; // Whether the owner (ownerId) has seen this message
-    senderId: Types.ObjectId;
+    time: Date;
+    seen: boolean; // Seen by the recipient (optional tracking)
 }
 
-// Chat entry with a participant
-export interface IChatEntry {
-    participant: Types.ObjectId;
-    chatId: Types.ObjectId;
-    messages: IMessageEntry[];
-    lastSeenAt?: Date;
+// Each participant's message list (only owner-sent messages)
+export interface IParticipantChat {
+    chats: IMessage[];
 }
 
 export interface IChatBox extends Document {
     ownerId: Types.ObjectId;
-    chats: IChatEntry[];
+    participants: {
+        [participantId: string]: IParticipantChat;
+    };
+    lastParticipants: Types.ObjectId | null;
+    isChatBoxOpened: boolean;
+
 }
 
-const MessageEntrySchema = new Schema<IMessageEntry>(
+const MessageSchema = new Schema<IMessage>(
     {
         message: { type: String, required: true },
-        createdAt: { type: Date, default: Date.now },
-        seen: { type: Boolean, default: false }, // Owner-specific seen status
-        senderId: { type: Schema.Types.ObjectId, ref: "users", required: true }, // NEW FIELD
+        time: { type: Date, default: Date.now },
+        seen: { type: Boolean, default: false }, // Seen by the receiver
     },
     { _id: true }
 );
 
-const ChatEntrySchema = new Schema<IChatEntry>(
+const ParticipantChatSchema = new Schema<IParticipantChat>(
     {
-        participant: { type: Schema.Types.ObjectId, ref: "users", required: true },
-        chatId: { type: Schema.Types.ObjectId, ref: "chatbox", required: true },
-        messages: [MessageEntrySchema],
-        lastSeenAt: { type: Date }, // Optional, helps compute unseen messages fast
+        chats: [MessageSchema],
     },
-    { _id: true }
+    { _id: false }
 );
 
 const ChatBoxSchema = new Schema<IChatBox>(
     {
         ownerId: { type: Schema.Types.ObjectId, ref: "users", required: true },
-        chats: [ChatEntrySchema],
+        participants: {
+            type: Map,
+            of: ParticipantChatSchema,
+            default: {},
+        },
+        lastParticipants: { type: Schema.Types.ObjectId, ref: "users", default: null },
+        isChatBoxOpened: { type: Boolean, default: true }, // Indicates if the chatbox is opened or closed
     },
     { timestamps: true }
 );
 
-export const ChatBoxModel = mongoose.models.chatbox || mongoose.model<IChatBox>("chatbox", ChatBoxSchema);
+export const ChatBoxModel = mongoose.models.ChatBox || mongoose.model<IChatBox>("ChatBox", ChatBoxSchema);

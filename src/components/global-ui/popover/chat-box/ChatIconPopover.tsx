@@ -19,13 +19,13 @@ import { BiMessageDetail } from "react-icons/bi";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { getChatMessagesOrUser } from "@/utils/client/api/api-chat-box";
+import { getLastParticipants, toggleChatBoxStatus } from "@/utils/client/api/api-chat-box";
 import { ApiChatBoxMessageType } from "@/utils/constants";
-import { setChatBoxActiveUser } from "@/lib/features/chat-box-slice/chatBoxSlice";
-import { chatBoxUserType } from "@/types/client-types";
+import { setChatBoxActiveUser, setCountOfUnseenMessage } from "@/lib/features/chat-box-slice/chatBoxSlice";
 
 export default function ChatIconPopover() {
-    const count = useAppSelector(state => state.userStore.countOfUnseenMessages);
+    const [isOpen, setIsOpen] = useState(false);
+    const unseenMessagesCount = useAppSelector(state => state.chatBoxStore.countOfUnseenMessages);
     const activeParticipant = useAppSelector(state => state.chatBoxStore.activeUserChat.user);
 
     const dispatch = useAppDispatch();
@@ -37,8 +37,9 @@ export default function ChatIconPopover() {
         if (!activeParticipant) {
             const fetchData = async () => {
                 setLoading(true);
-                const data = await getChatMessagesOrUser(ApiChatBoxMessageType.GET_ACTIVE_USER);
-                dispatch(setChatBoxActiveUser(data as chatBoxUserType));
+                const data = await getLastParticipants(ApiChatBoxMessageType.GET_ACTIVE_USER);
+                dispatch(setChatBoxActiveUser(data.data));
+                dispatch(setCountOfUnseenMessage(data.count));
                 setLoading(false);
             }
             fetchData();
@@ -48,14 +49,16 @@ export default function ChatIconPopover() {
 
     return (
         <>
-            <Popover>
-                <PopoverTrigger asChild>
+            <Popover open={isOpen} onOpenChange={async (open) => {
+                await toggleChatBoxStatus(open);
+                setIsOpen(open);
+            }}>                <PopoverTrigger asChild>
                     <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">
                         <BiMessageDetail className="w-5 h-5" />
                         {
-                            // Message count badge
-                            count !== 0 && <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-red-500 rounded-full shadow-md">
-                                {count}
+                            // Message unseenMessagesCount badge
+                            unseenMessagesCount !== 0 && <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-red-500 rounded-full shadow-md">
+                                {unseenMessagesCount}
                             </span>
                         }
                     </button>

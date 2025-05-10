@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync-indexes": "tsx src/config/SyncIndexes.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -97,6 +98,7 @@
     "eslint-config-next": "15.3.1",
     "postcss": "^8.5.3",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
 }

@@ -1,10 +1,13 @@
 import ConnectDB from "@/config/ConnectDB";
-import { ChatBoxModel, IChatBox, IChatEntry, IMessageEntry } from "@/models/ChatBoxModel";
-import UserModel from "@/models/UserModel";
+import { ChatBoxModel, IChatBox, IMessage } from "@/models/ChatBoxModel";
+import UserModel, { IUsers } from "@/models/UserModel";
 import { ApiChatBoxMessageType, SocketTriggerTypes } from "@/utils/constants";
+import { getUnseenMessageCountFromUser } from "@/utils/server/getUnseenMessageCountFromUser";
 import { getUserIdFromRequest } from "@/utils/server/getUserFromToken";
+import { resetUnseenMessageCount } from "@/utils/server/resetUnseenMessageCount";
+import { updateUserChatBox } from "@/utils/server/updateUserChatBox";
+import { getUserSocketId } from "@/utils/socket/socketUserMap";
 import { triggerSocketEvent } from "@/utils/socket/triggerSocketEvent";
-import { UpdateQuery } from "mongoose";
 import { Types } from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,58 +17,78 @@ export async function GET(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const selectedFriendId = searchParams.get("selectedFriendId");
-        const type = searchParams.get("type");
-        console.log(`${type} - ${selectedFriendId}`);
+        const type = searchParams.get("type") || ApiChatBoxMessageType.GET_ACTIVE_USER;
 
         const currentUserId = await getUserIdFromRequest(req);
         if (!currentUserId) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const chatBox = await ChatBoxModel.findOne({ ownerId: currentUserId }).lean() as IChatBox | null;
+        const currentUserChatBox = await ChatBoxModel.findOne({ ownerId: currentUserId }).lean<IChatBox>();
+        const selectedUserChatBox = selectedFriendId
+            ? await ChatBoxModel.findOne({ ownerId: selectedFriendId }).lean<IChatBox>()
+            : null;
 
-        let selectedUser: { _id: string; username: string; image: string } | null = null;
+        // Handle GET_MESSAGES
+        if (type === ApiChatBoxMessageType.GET_MESSAGES) {
+            if (!selectedFriendId) {
+                return NextResponse.json({ message: "selectedFriendId is required for GET_MESSAGES" }, { status: 400 });
+            }
 
-        // If selectedFriendId is provided via query param
-        if (selectedFriendId) {
-            selectedUser = await UserModel.findById(selectedFriendId, "username image").lean() as {
-                _id: string;
-                username: string;
-                image: string;
-            } | null;
+            const selectedUser = await UserModel.findById(selectedFriendId, "username image").lean();
+            if (!selectedUser) {
+                return NextResponse.json({ message: "Selected user not found" }, { status: 404 });
+            }
+
+            const currentUserChats = currentUserChatBox?.participants?.[selectedFriendId]?.chats || [];
+            const friendUserChats = selectedUserChatBox?.participants?.[currentUserId.toString()]?.chats || [];
+
+            const allChats = [...currentUserChats, ...friendUserChats];
+
+            const formattedChats = allChats
+                .map((msg) => ({
+                    _id: msg._id?.toString() ?? crypto.randomUUID(),
+                    message: msg.message,
+                    createdAt: new Date(msg.time).toISOString(),
+                    user_id: currentUserChats.includes(msg)
+                        ? currentUserId.toString()
+                        : selectedFriendId,
+                }))
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+            return NextResponse.json({ success: true, data: formattedChats }, { status: 200 });
         }
 
-        // Fallback: recent chat participant
-        if (!selectedUser && chatBox && chatBox?.chats?.length > 0) {
-            const latestChat = chatBox?.chats.reduce((latest, chat) => {
-                const lastMessage = chat.messages.at(-1);
-                const latestTime = latest?.messages.at(-1)?.createdAt ?? new Date(0);
-                return lastMessage && lastMessage.createdAt > latestTime ? chat : latest;
-            });
+        // Handle GET_ACTIVE_USER
+        let selectedUser: { _id: string; username: string; image: string } | null = null;
 
-            if (latestChat) {
-                selectedUser = await UserModel.findById(latestChat.participant, "username image").lean() as {
-                    _id: string;
-                    username: string;
-                    image: string;
-                } | null;
+        if (selectedFriendId) {
+            selectedUser = await UserModel.findById(selectedFriendId, "username image").lean() as { _id: string; username: string; image: string } | null;
+        }
+
+        if (!selectedUser && currentUserChatBox?.lastParticipants) {
+            selectedUser = await UserModel.findById(currentUserChatBox.lastParticipants, "username image").lean() as { _id: string; username: string; image: string } | null;
+        }
+
+        if (!selectedUser && currentUserChatBox) {
+            const latestParticipantId = Object.keys(currentUserChatBox.participants || {}).sort((a, b) => {
+                const aChats = currentUserChatBox.participants[a]?.chats || [];
+                const bChats = currentUserChatBox.participants[b]?.chats || [];
+                const aTime = aChats.at(-1)?.time ?? new Date(0);
+                const bTime = bChats.at(-1)?.time ?? new Date(0);
+                return bTime.getTime() - aTime.getTime();
+            })[0];
+
+            if (latestParticipantId) {
+                selectedUser = await UserModel.findById(latestParticipantId, "username image").lean() as { _id: string; username: string; image: string } | null;
             }
         }
 
-        // Fallback: first followed user
         if (!selectedUser) {
-            const currentUser = await UserModel.findById(currentUserId, "following").lean() as {
-                following?: { userId: string }[];
-            } | null;
-            const followingList = currentUser?.following ?? [];
-
-            if (followingList.length > 0) {
-                const firstFollowedUserId = followingList[0].userId;
-                selectedUser = await UserModel.findById(firstFollowedUserId, "username image").lean() as {
-                    _id: string;
-                    username: string;
-                    image: string;
-                } | null;
+            const currentUser = await UserModel.findById(currentUserId, "following").lean<IUsers>();
+            const firstFollowedUserId = currentUser?.following?.[0]?.userId;
+            if (firstFollowedUserId) {
+                selectedUser = await UserModel.findById(firstFollowedUserId, "username image").lean() as { _id: string; username: string; image: string } | null;
             }
         }
 
@@ -73,23 +96,21 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ message: "No user found" }, { status: 404 });
         }
 
-        if (type === ApiChatBoxMessageType.GET_MESSAGES) {
-            const chatWithFriend = chatBox?.chats.find(chat =>
-                chat.participant.toString() === selectedUser!._id.toString()
+        // Update the lastParticipants field in the chatbox
+        if (currentUserChatBox && !currentUserChatBox.lastParticipants) {
+            await ChatBoxModel.updateOne(
+                { currentUserId },
+                {
+                    $set: { lastParticipants: selectedUser._id }
+                },
             );
-
-            const formattedChats = chatWithFriend?.messages.map((msg) => ({
-                _id: msg._id?.toString() ?? crypto.randomUUID(),
-                message: msg.message,
-                createdAt: msg.createdAt.toISOString(),
-                user_id: msg.senderId?.toString(),
-            })) ?? [];
-
-            return NextResponse.json({ success: true, data: formattedChats }, { status: 200 });
         }
+
+        const unseenMessagesCount = await getUnseenMessageCountFromUser(currentUserId, selectedUser._id)
 
         return NextResponse.json({
             success: true,
+            count: unseenMessagesCount,
             data: {
                 _id: selectedUser._id.toString(),
                 username: selectedUser.username,
@@ -109,37 +130,52 @@ export async function POST(req: NextRequest) {
         const currentUserId = await getUserIdFromRequest(req);
         if (!currentUserId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-        const { recipientId, message } = await req.json();
+        const { participantsId, message } = await req.json();
 
-        if (!recipientId || !message) {
+        if (!participantsId || !message) {
             return NextResponse.json({ message: "Invalid data" }, { status: 400 });
         }
+
+        const isParticipantOnline = getUserSocketId(participantsId) ? true : false;
+        const lastChattedUserOfParticipants = await ChatBoxModel.findOne({ ownerId: participantsId, lastParticipants: currentUserId });
+        const isSenderIsLastParticipant = lastChattedUserOfParticipants?.lastParticipants?.toString() === currentUserId.toString();
+        const isParticipantsChatBoxOpened = lastChattedUserOfParticipants?.isChatBoxOpened;
+        const isSenderIsLastParticipantAndChatBoxOpened = isSenderIsLastParticipant && isParticipantsChatBoxOpened;
+        const isSeen = isParticipantOnline && isSenderIsLastParticipantAndChatBoxOpened;
 
         const newMessage = {
             _id: new Types.ObjectId(),
             senderId: currentUserId,
             message,
-            createdAt: new Date(),
-            seen: false,
+            time: new Date(),
+            seen: isSeen,
         };
+
         const responseMessage = {
             _id: newMessage._id,
             message: newMessage.message,
-            createdAt: newMessage.createdAt,
+            createdAt: newMessage.time,
             user_id: currentUserId,
         };
 
-        // Run sender + receiver updates in parallel
-        await Promise.all([
-            updateUserChatBox(currentUserId, recipientId, newMessage, true),   // sender
-            updateUserChatBox(recipientId, currentUserId, newMessage, false), // receiver
-        ]);
+        // Save message only in sender's chatbox
+        await updateUserChatBox(currentUserId, participantsId, newMessage);
 
+        // Trigger socket to send message
         triggerSocketEvent({
-            userId: recipientId,
+            userId: participantsId,
             type: SocketTriggerTypes.SEND_NEW_CHAT_MESSAGE,
             notificationData: responseMessage
         });
+
+        // Notify participant if they are online but chatbox is closed
+        if (!isParticipantsChatBoxOpened && isParticipantOnline && isSenderIsLastParticipant) {
+            triggerSocketEvent({
+                userId: participantsId,
+                type: SocketTriggerTypes.INCREASE_UNSEEN_MESSAGE_COUNT,
+                notificationData: null
+            });
+        }
 
         return NextResponse.json({ success: true, message: "Message sent", data: responseMessage });
     } catch (error) {
@@ -151,7 +187,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     try {
         const body = await req.json();
-        const { type, participantId } = body;
+        const { type, participantId, isOpened } = body;
 
         const currentUserId = await getUserIdFromRequest(req);
         if (!currentUserId) {
@@ -167,13 +203,18 @@ export async function PUT(req: NextRequest) {
                 if (!participantId) {
                     return NextResponse.json({ message: "Participant ID required" }, { status: 400 });
                 }
+                // Update the sender's message "seen" status in recipient's chatBox
                 await resetUnseenMessageCount(participantId, currentUserId);
                 return NextResponse.json({ success: true, message: "Unseen messages reset" });
 
-            // Add more cases here for other features
-            // case "archive-chat":
-            //     await archiveChat(participantId, currentUserId);
-            //     return NextResponse.json({ success: true, message: "Chat archived" });
+            case ApiChatBoxMessageType.TOGGLE_IS_CHATBOX_OPEN:
+                if (isOpened === undefined) {
+                    return NextResponse.json({ message: "isOpened parameter is required" }, { status: 400 });
+                }
+                // Update the chatbox open/close status
+                await ChatBoxModel.updateOne({ ownerId: currentUserId }, { $set: { isChatBoxOpened: isOpened } });
+                return NextResponse.json({ success: true, message: "Chatbox status updated" });
+
 
             default:
                 return NextResponse.json({ message: `Unknown operation type: ${type}` }, { status: 400 });
@@ -190,8 +231,6 @@ export async function DELETE(req: NextRequest) {
         const { participantId, messageId } = await req.json();
 
         const currentUserId = await getUserIdFromRequest(req);
-
-        console.log(`${participantId} - ${messageId} - ${currentUserId}`);
 
         if (!currentUserId || !participantId || !messageId) {
             return NextResponse.json(
@@ -211,32 +250,29 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
-        const currentUserObjectId = new Types.ObjectId(currentUserId);
-        const participantObjectId = new Types.ObjectId(participantId);
-        const messageObjectId = new Types.ObjectId(messageId);
-
-        const chatBox = await ChatBoxModel.findOne({ ownerId: currentUserObjectId });
+        const chatBox = await ChatBoxModel.findOne({ ownerId: currentUserId });
         if (!chatBox) {
             return NextResponse.json({ message: 'Chatbox not found' }, { status: 404 });
         }
 
-        const chatEntry = chatBox.chats.find((chat: IChatEntry) => chat.participant.equals(participantObjectId));
-        if (!chatEntry) {
-            return NextResponse.json({ message: 'Chat with participant not found' }, { status: 404 });
+        const userChats: IMessage[] = chatBox.participants?.[participantId]?.chats;
+        if (!userChats || userChats.length === 0) {
+            return NextResponse.json({ message: 'No messages found with participant' }, { status: 404 });
         }
 
-        const originalCount = chatEntry.messages.length;
-        chatEntry.messages = chatEntry.messages.filter(
-            (msg: IMessageEntry) => !msg._id?.equals(messageObjectId)
+        const updatedChats = userChats.filter(
+            (msg) => !msg._id?.equals(messageId)
         );
 
-        if (chatEntry.messages.length === originalCount) {
-            return NextResponse.json({ message: 'Message not found in chat' }, { status: 404 });
+        if (updatedChats.length === userChats.length) {
+            return NextResponse.json({ message: 'Message not found' }, { status: 404 });
         }
 
+        // Update the participant's message array
+        chatBox.participants[participantId].chats = updatedChats;
         await chatBox.save();
 
-        // ? trigger delete message to participantId account
+        // Notify recipient to delete message from UI (optional since they don’t store it)
         triggerSocketEvent({
             userId: participantId,
             type: SocketTriggerTypes.DELETE_CHAT_MESSAGE,
@@ -244,77 +280,9 @@ export async function DELETE(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, message: 'Message deleted successfully' });
+
     } catch (error) {
         console.error('[DELETE_CHATBOX_MESSAGE]', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-// ? Helper function for post request
-async function updateUserChatBox(
-    ownerId: string,
-    participantId: string,
-    message: {
-        _id: Types.ObjectId;
-        senderId: string;
-        message: string;
-        createdAt: Date;
-        seen: boolean;
-    },
-    isSender: boolean
-) {
-    const existingChatBox = await ChatBoxModel.findOne({
-        ownerId,
-        "chats.participant": participantId,
-    });
-
-    if (existingChatBox) {
-        // Type-safe update object
-        const update: UpdateQuery<IChatBox> = {
-            $push: { "chats.$.messages": { ...message, seen: isSender ? true : false } },
-        };
-        if (isSender) {
-            update.$set = { "chats.$.lastSeenAt": new Date() };
-        }
-
-        await ChatBoxModel.updateOne(
-            { ownerId, "chats.participant": participantId },
-            update
-        );
-    } else {
-        const newChat = {
-            participant: participantId,
-            chatId: new Types.ObjectId(),
-            messages: [message],
-            lastSeenAt: isSender ? new Date() : undefined,
-        };
-
-        await ChatBoxModel.updateOne(
-            { ownerId },
-            { $push: { chats: newChat } },
-            { upsert: true }
-        );
-    }
-}
-
-// ? Helper function for pu request, to reset count of new unseen messages
-async function resetUnseenMessageCount(participantId: string, currentUserId: string) {
-    await ChatBoxModel.updateOne(
-        {
-            ownerId: new Types.ObjectId(currentUserId),
-            "chats.participant": new Types.ObjectId(participantId),
-        },
-        {
-            $set: {
-                "chats.$[chat].messages.$[msg].seen": true,
-                "chats.$[chat].lastSeenAt": new Date(),
-            },
-        },
-        {
-            arrayFilters: [
-                { "chat.participant": new Types.ObjectId(participantId) },
-                { "msg.seen": false },
-            ],
-        }
-    );
-};

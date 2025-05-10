@@ -5,14 +5,15 @@ import cron from "node-cron";
 import { triggerSocketEvent } from "../socket/triggerSocketEvent";
 import { SocketTriggerTypes } from "../constants";
 import UserModel from "@/models/UserModel";
+import { emailAuthentication } from "@/config/NodeEmailer";
+import { DateTime } from "luxon"; // Make sure to install this package
 
-// Fix Global type properly
 declare global {
     // eslint-disable-next-line no-var
     var slotStatusCronStarted: boolean | undefined;
 }
 
-function parseTimeTo24Hour(timeStr: string): { hours: number; minutes: number } {
+function parseTimeTo24Hour(timeStr: string): { hours: number; minutes: number } | null {
     try {
         if (!timeStr) throw new Error("Invalid time string");
 
@@ -37,12 +38,11 @@ function parseTimeTo24Hour(timeStr: string): { hours: number; minutes: number } 
         return { hours, minutes };
     } catch (error) {
         console.error("[parseTimeTo24Hour Error]:", (error as Error).message);
-        return { hours: 0, minutes: 0 };
+        return null;
     }
 }
 
 function parseUTCOffset(timeZone: string): number {
-    // Example input: "UTC+6", "UTC+06:30", "UTC-4", "UTC+0"
     const match = timeZone.match(/UTC([+-])(\d{1,2})(?::(\d{2}))?/);
     if (!match) return 0;
 
@@ -50,15 +50,15 @@ function parseUTCOffset(timeZone: string): number {
     const hours = parseInt(match[2], 10);
     const minutes = match[3] ? parseInt(match[3], 10) : 0;
 
-    return sign * (hours * 60 + minutes); // in minutes
+    return sign * (hours * 60 + minutes);
 }
+
 
 export async function updateSlotStatuses() {
     try {
         await ConnectDB();
 
-        const nowUTC = new Date();
-
+        const nowUTC = DateTime.utc();
         const slots = await SlotModel.find({
             status: { $in: [IRegisterStatus.Upcoming, IRegisterStatus.Ongoing] },
         });
@@ -69,33 +69,68 @@ export async function updateSlotStatuses() {
                 continue;
             }
 
-            const user = await UserModel.findById(slot.ownerId).select("timeZone image");
+            const user = await UserModel.findById(slot.ownerId).select("timeZone image email username");
             const timeZone = user?.timeZone || "UTC+0";
-            const offsetMinutes = parseUTCOffset(timeZone); // convert timeZone string to offset in minutes
+            const offsetMinutes = parseUTCOffset(timeZone);
 
-            const { hours: fromHours, minutes: fromMinutes } = parseTimeTo24Hour(slot.durationFrom);
-            const { hours: toHours, minutes: toMinutes } = parseTimeTo24Hour(slot.durationTo);
+            const fromTime = parseTimeTo24Hour(slot.durationFrom);
+            const toTime = parseTimeTo24Hour(slot.durationTo);
 
-            // Create the base date string (YYYY-MM-DD) from meetingDate
-            const dateStr = new Date(slot.meetingDate).toISOString().split("T")[0]; // e.g. "2025-05-01"
+            if (!fromTime || !toTime) {
+                console.warn(`Skipping slot ${slot._id} due to time parse failure.`);
+                continue;
+            }
 
-            // Construct local time as ISO-like string
-            const localStartStr = `${dateStr}T${String(fromHours).padStart(2, '0')}:${String(fromMinutes).padStart(2, '0')}:00`;
-            const localEndStr = `${dateStr}T${String(toHours).padStart(2, '0')}:${String(toMinutes).padStart(2, '0')}:00`;
+            const dateStr = DateTime.fromJSDate(new Date(slot.meetingDate)).toISODate();
 
-            // Parse as local time, then adjust to UTC
-            const offsetMs = offsetMinutes * 60 * 1000;
-            const meetingStartUTC = new Date(new Date(localStartStr).getTime() - offsetMs);
-            const meetingEndUTC = new Date(new Date(localEndStr).getTime() - offsetMs);
+            const start = DateTime.fromISO(`${dateStr}T${String(fromTime.hours).padStart(2, '0')}:${String(fromTime.minutes).padStart(2, '0')}:00`, { zone: "UTC" })
+                .minus({ minutes: offsetMinutes });
+            const end = DateTime.fromISO(`${dateStr}T${String(toTime.hours).padStart(2, '0')}:${String(toTime.minutes).padStart(2, '0')}:00`, { zone: "UTC" })
+                .minus({ minutes: offsetMinutes });
 
+            const timeDiffMinutes = Math.floor(start.diff(nowUTC, "minutes").minutes);
+            const timeDiffHours = Math.floor(timeDiffMinutes / 60);
+            const timeDiffDays = Math.floor(timeDiffHours / 24);
+
+            if (slot.status === IRegisterStatus.Upcoming && timeDiffDays <= 1) {
+                if (
+                    (timeDiffDays === 1 && timeDiffHours % 24 === 0 && timeDiffMinutes % 60 === 0) ||
+                    (timeDiffDays === 0 && timeDiffHours === 3 && timeDiffMinutes % 60 === 0) ||
+                    (timeDiffDays === 0 && timeDiffHours === 0 && timeDiffMinutes === 5)
+                ) {
+                    // Check if reminder already sent within last 60 seconds
+                    const nowLuxon = DateTime.utc();
+                    const lastSent = slot.lastReminderSentAt ? DateTime.fromISO(slot.lastReminderSentAt.toISOString()) : null;
+
+                    const lastSentDiff = lastSent ? nowLuxon.diff(lastSent, "seconds").seconds : Infinity;
+
+                    if (lastSentDiff > 60) {
+                        const subject = `Reminder: Your meeting "${slot.title}" is coming up!`;
+                        const html = `
+            <p>Hi ${user?.username || 'there'},</p>
+            <p>This is a reminder that your meeting "<strong>${slot.title}</strong>" is scheduled at <strong>${slot.durationFrom}</strong> on <strong>${dateStr}</strong>.</p>
+            <p>Thank you!</p>
+        `;
+                        if (user?.email) {
+                            await emailAuthentication(user.email, subject, html);
+                            slot.lastReminderSentAt = new Date();
+                            await slot.save();
+                            console.log(`Reminder email sent to ${user.email} for slot ID ${slot._id}`);
+                        }
+                    } else {
+                        console.log(`Reminder already sent recently for slot ID ${slot._id}`);
+                    }
+                }
+
+            }
 
             let newStatus = slot.status;
 
-            if (nowUTC < meetingStartUTC) {
+            if (nowUTC < start) {
                 newStatus = IRegisterStatus.Upcoming;
-            } else if (nowUTC >= meetingStartUTC && nowUTC <= meetingEndUTC) {
+            } else if (nowUTC >= start && nowUTC <= end) {
                 newStatus = IRegisterStatus.Ongoing;
-            } else if (nowUTC > meetingEndUTC) {
+            } else if (nowUTC > end) {
                 newStatus = slot.engagementRate === 0 ? IRegisterStatus.Expired : IRegisterStatus.Completed;
             }
 
@@ -104,7 +139,6 @@ export async function updateSlotStatuses() {
                 await slot.save();
                 console.log(`Slot ID ${slot._id} updated to ${newStatus}`);
 
-                // Notify the meeting host to create a video call
                 if (newStatus === IRegisterStatus.Ongoing) {
                     const baseNotification = {
                         type: INotificationType.MEETING_TIME_STARTED,
@@ -131,6 +165,8 @@ export async function updateSlotStatuses() {
                         },
                     });
                 }
+            } else {
+                await slot.save();
             }
         }
     } catch (error) {
@@ -138,11 +174,10 @@ export async function updateSlotStatuses() {
     }
 }
 
-// Run cron every minute in UTC+6
 if (process.env.NODE_ENV === "production" || !global.slotStatusCronStarted) {
     cron.schedule("* * * * *", updateSlotStatuses, {
         timezone: "Asia/Dhaka",
     });
     global.slotStatusCronStarted = true;
-    console.log("Slot status cron job started (UTC+6).");
+    console.log("Slot status cron job started (UTC+6). [Using Luxon for TZ]");
 }

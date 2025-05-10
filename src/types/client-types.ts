@@ -252,5 +252,4 @@ export interface userSliceInitialState {
     user: Users | null;
     notifications: Notification[] | null;
     activities: ActivityType[] | null;
-    countOfUnseenMessages: number;
 }

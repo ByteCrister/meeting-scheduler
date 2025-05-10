@@ -4,7 +4,7 @@ import { SendHorizonal, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ChatBoxSkeleton from './ChatBoxSkeleton';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { deleteMessage, getChatMessagesOrUser, resetUnseenMessageCount, sendMessage } from '@/utils/client/api/api-chat-box';
+import { deleteMessage, getChatMessages, resetUnseenMessageCount, sendMessage } from '@/utils/client/api/api-chat-box';
 import { ApiChatBoxMessageType } from '@/utils/constants';
 import { addNewMessage, deleteChatMessage, setActiveUserChats, setCountOfUnseenMessage } from '@/lib/features/chat-box-slice/chatBoxSlice';
 import { chatBoxUserChatType } from '@/types/client-types';
@@ -20,7 +20,7 @@ export default function ChatBox() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const data = await getChatMessagesOrUser(ApiChatBoxMessageType.GET_MESSAGES, participantId);
+            const data = await getChatMessages(ApiChatBoxMessageType.GET_MESSAGES, participantId);
             const isResetSuccess = await resetUnseenMessageCount(participantId!);
             if (isResetSuccess) {
                 dispatch(setCountOfUnseenMessage(0));

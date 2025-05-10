@@ -109,6 +109,10 @@ const useNotificationSocket = () => {
                 socket.on(SocketTriggerTypes.DELETE_CHAT_MESSAGE, (data) => {
                     dispatch(deleteChatMessage(data.notificationData)); // ? here it's getting deleted message id
                 });
+                // ? Increase unseen message count
+                socket.on(SocketTriggerTypes.INCREASE_UNSEEN_MESSAGE_COUNT, () => {
+                    dispatch(setCountOfUnseenMessage(countOfUnseenMessages + 1)); // ? increasing unseen message count
+                });
 
             }
         };

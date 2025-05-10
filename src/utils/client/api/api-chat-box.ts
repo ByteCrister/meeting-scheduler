@@ -1,21 +1,34 @@
 import { chatBoxUserChatType, chatBoxUserType } from "@/types/client-types";
 import { ApiChatBoxMessageType } from "@/utils/constants";
-import axios from "axios";
 import apiService from "./api-services";
 
-// ? using same function to get messages and chatted user info
-export const getChatMessagesOrUser = async (type: ApiChatBoxMessageType, selectedFriendId?: string
-): Promise<chatBoxUserChatType[] | chatBoxUserType> => {
-    const res = await axios.get(
-        `/api/chatbox/message`,
-        { params: { selectedFriendId, type } }
-    );
-    if (!res.data.success) {
-        return type === ApiChatBoxMessageType.GET_MESSAGES
-            ? []
-            : { _id: "", username: "", image: "" }; // ! Fallback case
+// ? get chat messages
+// ! when the chatbox is opened
+// ! and when the user is selected from the chatbox list
+// ! This is used to get the chat messages of a specific user
+export const getChatMessages = async (
+    type: ApiChatBoxMessageType.GET_MESSAGES,
+    selectedFriendId?: string):
+    Promise<chatBoxUserChatType[]> => {
+    const res = await apiService.get(`/api/chatbox/message`, { selectedFriendId, type });
+    if (!res.data?.success) {
+        return []
     }
     return res.data.data;
+};
+
+// ? get active chatbox user
+// ! This is used to get the active chatbox user when the chatbox is opened
+// ! and also when the user is selected from the chatbox list
+export const getLastParticipants = async (
+    type: ApiChatBoxMessageType.GET_ACTIVE_USER,
+    selectedFriendId?: string):
+    Promise<{ data: chatBoxUserType, count: number }> => {
+    const res = await apiService.get(`/api/chatbox/message`, { selectedFriendId, type });
+    if (!res.data.success) {
+        return { data: { _id: "", username: "", image: "" }, count: 0 };
+    }
+    return res.data;
 };
 
 // ? get chatbox user list
@@ -29,11 +42,8 @@ export const getChatBoxUserList = async () => {
 
 
 // ? sending messages
-export const sendMessage = async (recipientId: string, message: string) => {
-    const resData = await apiService.post(`/api/chatbox/message`, {
-        recipientId,
-        message,
-    });
+export const sendMessage = async (participantsId: string, message: string) => {
+    const resData = await apiService.post(`/api/chatbox/message`, { participantsId, message });
     if (!resData.success) {
         return null;
     }
@@ -42,25 +52,31 @@ export const sendMessage = async (recipientId: string, message: string) => {
 };
 
 // ? delete messages
-export const deleteMessage = async (
-    participantId: string,
-    messageId: string
-) => {
-    const resData = await apiService.delete(`/api/chatbox/message`, {
-        participantId,
-        messageId,
-    });
-
+export const deleteMessage = async (participantId: string, messageId: string) => {
+    const resData = await apiService.delete(`/api/chatbox/message`, { participantId, messageId });
     if (!resData.success) {
         return false;
     }
     return resData.success;
 };
 
-
+// ? reset unseen message count
 export const resetUnseenMessageCount = async (participantId: string) => {
-    const resData = await apiService.put(`/api/chatbox/message`, { participantId, type: ApiChatBoxMessageType.RESET_UNSEEN_MESSAGE_COUNT });
+    const resData = await apiService.put(`/api/chatbox/message`,
+        {
+            participantId,
+            type: ApiChatBoxMessageType.RESET_UNSEEN_MESSAGE_COUNT
+        });
     if (!resData.success) return false;
 
     return resData.success;
 };
+
+// ? Toggle chat box open/close status
+export const toggleChatBoxStatus = async (isOpened: boolean) => {
+    await apiService.put(`/api/chatbox/message`, {
+        isOpened,
+        type: ApiChatBoxMessageType.TOGGLE_IS_CHATBOX_OPEN
+    });
+    return true;
+}

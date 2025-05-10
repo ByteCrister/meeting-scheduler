@@ -15,47 +15,49 @@ export async function GET(req: NextRequest) {
         }
 
         const currentUser = await UserModel.findById(currentUserId, "followers following");
-        const chatBox = await ChatBoxModel.findOne({ ownerId: currentUserId }).lean() as IChatBox | null;
-
         if (!currentUser) {
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        // Merge follower and following IDs
         const followerIds = currentUser.followers?.map((f: IUserFollowInfo) => f.userId.toString()) ?? [];
         const followingIds = currentUser.following?.map((f: IUserFollowInfo) => f.userId.toString()) ?? [];
-        const userIds = [...new Set([...followerIds, ...followingIds])]; // Unique IDs
+        const userIds = [...new Set([...followerIds, ...followingIds])];
 
-        const userList = await Promise.all(
-            userIds.map(async (userId) => {
-                const user = await UserModel.findById(userId, "username email image").lean() as {
-                    _id: string | Types.ObjectId;
-                    username: string;
-                    email: string;
-                    image: string;
-                } | null;
+        // Fetch all users in one query
+        const users = await UserModel.find(
+            { _id: { $in: userIds } },
+            "username email image"
+        ).lean<{ _id: Types.ObjectId; username: string; email: string; image: string }[]>();
 
-                if (!user) return null;
+        const usersMap = new Map(users.map(u => [u._id.toString(), u]));
 
-                // Find unseen message count from chatBox
-                const chat = chatBox?.chats.find(c => c.participant.toString() === userId);
-                const newUnseenMessages = chat?.messages.filter(msg => !msg.seen).length ?? 0;
+        // Fetch all chat boxes of those users
+        const chatBoxes = await ChatBoxModel.find({
+            ownerId: { $in: userIds },
+        }).lean<IChatBox[]>();
 
-                const online = Boolean(getUserSocketId(userId));
+        const chatBoxMap = new Map(chatBoxes.map(cb => [cb.ownerId.toString(), cb]));
 
-                return {
-                    _id: user._id.toString(),
-                    username: user.username,
-                    email: user.email,
-                    image: user.image,
-                    newUnseenMessages,
-                    online,
-                };
-            })
-        );
+        // Construct response
+        const userList = userIds.map(userId => {
+            const user = usersMap.get(userId);
+            if (!user) return null;
 
-        const filteredList = userList.filter(Boolean); // Remove nulls
-        return NextResponse.json({ success: true, data: filteredList }, { status: 200 });
+            const chatBox = chatBoxMap.get(userId);
+            const chatsFromThem = chatBox?.participants?.[currentUserId.toString()]?.chats ?? [];
+            const newUnseenMessages = chatsFromThem.filter(msg => !msg.seen).length;
+
+            return {
+                _id: user._id.toString(),
+                username: user.username,
+                email: user.email,
+                image: user.image,
+                newUnseenMessages,
+                online: Boolean(getUserSocketId(userId)),
+            };
+        }).filter(Boolean);
+
+        return NextResponse.json({ success: true, data: userList }, { status: 200 });
 
     } catch (error) {
         console.error("[GET_CHATBOX_USER_LIST]", error);

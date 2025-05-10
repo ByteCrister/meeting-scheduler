@@ -9,7 +9,7 @@ let cached = global.mongoose; // Attempt to retrieve an existing global cache fo
 
 // * Initialize the cache if it does not exist
 if (!cached) {
-    cached = global.mongoose = { connection: null, promise: null };
+    cached = global.mongoose = { Types: null, connection: null, promise: null };
 }
 
 const ConnectDB = async () => {
